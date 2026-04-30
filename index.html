@@ -360,6 +360,7 @@ footer strong{font-family:'Playfair Display',serif;color:var(--gold)}
         <button class="mkt-opt active" id="mkt-BR" onclick="setMkt('BR')">🇧🇷 B3</button>
         <button class="mkt-opt" id="mkt-CRYPTO" onclick="setMkt('CRYPTO')">₿ Cripto</button>
         <button class="mkt-opt" id="mkt-RF" onclick="setMkt('RF')">📊 RF</button>
+        <button class="mkt-opt" id="mkt-FII" onclick="setMkt('FII')">🏢 FIIs</button>
       </div>
       <div class="search-row">
         <input class="search-in" id="search-in" type="text" placeholder="Ex: WEGE3, PETR4..." />
@@ -480,6 +481,14 @@ footer strong{font-family:'Playfair Display',serif;color:var(--gold)}
   <strong>Bússola do Investidor</strong> &nbsp;·&nbsp; Análise fundamentalista com IA &nbsp;·&nbsp; Dados: Brapi · IA: Anthropic Claude &nbsp;·&nbsp; Não é recomendação de investimento
 </footer>
 
+<!-- FII Research Modal -->
+<div class="fii-modal-overlay" id="fii-modal">
+  <div class="fii-modal">
+    <div class="fii-modal-close" onclick="fii_closeModal()">✕</div>
+    <div id="fii-modal-content"></div>
+  </div>
+</div>
+
 <script>
 var MKT = 'BR';
 var TICKER = '';
@@ -549,6 +558,7 @@ function setMkt(m){
   document.getElementById('mkt-BR').classList.toggle('active', m==='BR');
   document.getElementById('mkt-CRYPTO').classList.toggle('active', m==='CRYPTO');
   document.getElementById('mkt-RF').classList.toggle('active', m==='RF');
+  document.getElementById('mkt-FII').classList.toggle('active', m==='FII');
   var lists = {
     BR: ['WEGE3','PETR4','ITUB4','VALE3','BBAS3','RENT3','PRIO3','RADL3'],
     CRYPTO: ['BTC','ETH','SOL','BNB','ADA','XRP','DOGE'],
@@ -569,6 +579,13 @@ function setMkt(m){
   document.getElementById('search-in').placeholder = ph[m]||'';
   if(m==='RF'){
     showRFPanel();
+    return;
+  }
+  if(m==='FII'){
+    document.getElementById('quick-list').innerHTML = '';
+    document.getElementById('search-in').placeholder = 'Ex: MXRF11, XPML11...';
+    showFIIPanel();
+    return;
   }
 }
 
@@ -1171,122 +1188,444 @@ function rf2_aliquotaIR(prazoMeses) {
 // SGS série 13521 = Taxa Swap DI Pré 360d (proxy curva)
 // SGS série 13600 = Taxa Swap DI Pré 720d
 // SGS série 13601 = Taxa Swap DI Pré 1080d
-var DI_SERIES = {
-    360:  13521,   // ~1 ano
-    720:  13600,   // ~2 anos
-    1080: 13601    // ~3 anos
-};
+// DI Futuro removido — custo de oportunidade usa Média Focus 3 anos
+async function rf2_fetchDIFuturo() { return null; }
 
-async function rf2_fetchDIFuturo() {
-    var di = {};
-    var prazoLabels = { 360: '1 ano', 720: '2 anos', 1080: '3 anos' };
-    var promises = Object.keys(DI_SERIES).map(async function(prazo) {
-        try {
-            var serie = DI_SERIES[prazo];
-            var url = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.' + serie + '/dados/ultimos/3?formato=json';
-            var r = await fetch(url);
-            if (!r.ok) { di[prazo] = null; return; }
-            var d = await r.json();
-            if (d && d.length > 0) {
-                di[prazo] = {
-                    taxa: parseFloat(d[d.length-1].valor),
-                    data: d[d.length-1].data,
-                    label: prazoLabels[prazo]
-                };
-            } else { di[prazo] = null; }
-        } catch(e) { di[prazo] = null; }
-    });
-    await Promise.all(promises);
-    return di;
-}
-
-// ── 6. Custo de oportunidade para o prazo ─────────────────────────
-// Retorna {taxa, fonte, label} — melhor estimativa da taxa de mercado
+// ── 6. Custo de oportunidade — sempre Média Focus 3 anos ─────────
 function rf2_custoOportunidade(prazoMeses, diData, focusMulti) {
-    var dias = prazoMeses * 30.4;
-
-    // 1. Tenta DI Futuro (mais preciso — preço de mercado)
-    if (diData) {
-        if (dias <= 450 && diData[360] && diData[360].taxa) {
-            return { taxa: diData[360].taxa, fonte: 'DI Futuro 1A (B3)', label: 'Taxa Swap DI Pré 360d' };
-        }
-        if (dias <= 900 && diData[720] && diData[720].taxa) {
-            return { taxa: diData[720].taxa, fonte: 'DI Futuro 2A (B3)', label: 'Taxa Swap DI Pré 720d' };
-        }
-        if (diData[1080] && diData[1080].taxa) {
-            return { taxa: diData[1080].taxa, fonte: 'DI Futuro 3A (B3)', label: 'Taxa Swap DI Pré 1080d' };
-        }
-    }
-
-    // 2. Fallback: Média geométrica Focus
-    if (focusMulti && Object.keys(focusMulti).length > 0) {
-        var mg = rf2_mediaGeometrica(focusMulti);
-        if (mg) return { taxa: mg, fonte: 'Média Geométrica Focus', label: 'Selic média projetada no período' };
-    }
-
-    // 3. Fallback: Selic atual
-    return { taxa: RF2.selicAtual || 10.75, fonte: 'Selic atual (SGS)', label: 'Selic Meta atual' };
-}
-
-// ── 7. Score de atratividade multi-anual (SUBSTITUIÇÃO) ──────────
-function rf2_attrScoreMulti(tipoTitulo, taxaTitulo, prazoMeses, diData, focusMulti) {
-    var cdi = RF2.cdiAtual || (RF2.selicAtual ? RF2.selicAtual - 0.10 : 10.65);
-    var custo = rf2_custoOportunidade(prazoMeses, diData, focusMulti);
-    var taxaRef = custo.taxa;
-
-    // Converter taxa do título para base comparável (% a.a.)
-    var taxaAbs = taxaTitulo;
-    if (tipoTitulo === 'posfixado') {
-        taxaAbs = (taxaTitulo / 100) * cdi;
-    } else if (tipoTitulo === 'ipca') {
-        var ipcaMed = rf2_mediaGeometrica(RF2.focusIPCA || {}) || RF2.ipcaFocus || 4.5;
-        taxaAbs = ipcaMed + taxaTitulo; // IPCA médio + spread
-    }
-
-    // Spread vs custo de oportunidade
-    var spread = taxaAbs - taxaRef;
-
-    var score;
-    if (spread > 3.0)       score = 95;
-    else if (spread > 2.0)  score = 85;
-    else if (spread > 1.0)  score = 75;
-    else if (spread > 0.5)  score = 65;
-    else if (spread > 0.0)  score = 55;
-    else if (spread > -0.5) score = 45;
-    else if (spread > -1.5) score = 32;
-    else                    score = 18;
-
-    // Bônus para IPCA+ (sempre tem proteção real)
-    if (tipoTitulo === 'ipca' && taxaTitulo > 5) score = Math.min(score + 8, 100);
-
+    // Usa sempre a média Focus 3 anos como referência
+    var mediaFocus = rf2_mediaFocus3Anos();
     return {
-        score: Math.round(score),
-        spread: spread,
-        taxaAbs: taxaAbs,
-        taxaRef: taxaRef,
-        custo: custo
+        taxa: mediaFocus,
+        fonte: 'Média Focus 3 anos',
+        label: 'Média aritmética Selic Focus (ano atual + 2)'
     };
 }
 
-// ── 8. Render da calculadora COM PRAZO ───────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+// RF2 — LÓGICA DE ATRATIVIDADE V3 + SIMULADOR DE RENDIMENTO
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Média Selic Focus para N meses ──────────────────────────────────
+// Interpola entre anos Focus conforme prazo em meses
+function rf2_mediaSelic(prazoMeses) {
+    var curAno = new Date().getFullYear();
+    var anos = Math.ceil(prazoMeses / 12);
+    var soma = 0;
+    var count = 0;
+    for (var i = 0; i < anos && i < 5; i++) {
+        var ano = String(curAno + i);
+        var v = RF2.focusSELIC[ano];
+        if (v != null && !isNaN(v)) { soma += v; count++; }
+    }
+    // Fallback
+    if (count === 0) return RF2.selicFocus || RF2.selicAtual || 10.75;
+    return soma / count;
+}
+
+// ── Média IPCA Focus para N meses ───────────────────────────────────
+function rf2_mediaIPCA(prazoMeses) {
+    var curAno = new Date().getFullYear();
+    var anos = Math.ceil(prazoMeses / 12);
+    var soma = 0;
+    var count = 0;
+    for (var i = 0; i < anos && i < 5; i++) {
+        var ano = String(curAno + i);
+        var v = RF2.focusIPCA[ano];
+        if (v != null && !isNaN(v)) { soma += v; count++; }
+    }
+    if (count === 0) return RF2.ipcaFocus || 4.5;
+    return soma / count;
+}
+
+// ── Alíquota IR regressiva ───────────────────────────────────────────
+function rf2_aliquotaIR(prazoMeses) {
+    var dias = prazoMeses * 30.4;
+    if (dias <= 180)  return 22.5;
+    if (dias <= 360)  return 20.0;
+    if (dias <= 720)  return 17.5;
+    return 15.0;
+}
+
+// ── CORE: Análise de Atratividade por Tipo ───────────────────────────
+function rf2_analisarAtividade(tipo, taxa, prazoMeses) {
+    var cdi = RF2.cdiAtual || (RF2.selicAtual ? RF2.selicAtual - 0.10 : 10.65);
+    var prazoEfetivo = Math.min(prazoMeses, 36);
+    var aviso36 = prazoMeses > 36;
+    var mediaSelic = rf2_mediaSelic(prazoEfetivo);
+    var mediaIPCA  = rf2_mediaIPCA(prazoEfetivo);
+
+    var resultado = {
+        tipo: tipo,
+        taxa: taxa,
+        prazoMeses: prazoMeses,
+        prazoEfetivo: prazoEfetivo,
+        aviso36: aviso36,
+        mediaSelic: mediaSelic,
+        mediaIPCA: mediaIPCA,
+        cdi: cdi,
+        // Preenchidos abaixo
+        taxaAbsoluta: 0,
+        custoOportunidade: 0,
+        spread: 0,
+        score: 50,
+        nivel: 'moderado',
+        label: '',
+        cor: '#F59E0B',
+        descricao: ''
+    };
+
+    if (tipo === 'prefixado') {
+        // ── PRÉ-FIXADO: compara diretamente vs Selic média ──
+        resultado.taxaAbsoluta    = taxa;
+        resultado.custoOportunidade = mediaSelic;
+        resultado.spread          = taxa - mediaSelic;
+
+        if (resultado.spread > 3)       { resultado.nivel='muito_alto'; resultado.label='Muito Alta'; resultado.cor='#16a34a'; resultado.score=95; }
+        else if (resultado.spread > 1.5){ resultado.nivel='alto';       resultado.label='Alta';       resultado.cor='#1DB954'; resultado.score=82; }
+        else if (resultado.spread > 0)  { resultado.nivel='moderado';   resultado.label='Moderada';   resultado.cor='#F59E0B'; resultado.score=62; }
+        else if (resultado.spread > -1.5){ resultado.nivel='baixo';     resultado.label='Baixa';      resultado.cor='#f97316'; resultado.score=35; }
+        else                            { resultado.nivel='muito_baixo';resultado.label='Muito Baixa';resultado.cor='#E74C3C'; resultado.score=15; }
+
+        resultado.descricao = 'Taxa prefixada de <strong>' + taxa.toFixed(2) + '% a.a.</strong> vs Selic média Focus '
+            + prazoEfetivo + ' meses: <strong>' + mediaSelic.toFixed(2) + '% a.a.</strong> — spread de '
+            + '<strong style="color:' + resultado.cor + '">' + (resultado.spread>=0?'+':'') + resultado.spread.toFixed(2) + ' p.p.</strong>. '
+            + (resultado.spread > 0
+                ? 'Oportunidade de travar taxa acima da Selic projetada.'
+                : 'Taxa abaixo da Selic projetada — pós-fixados podem ser superiores.');
+
+    } else if (tipo === 'posfixado') {
+        // ── PÓS-FIXADO: escalonamento por % do CDI ──
+        resultado.taxaAbsoluta      = (taxa / 100) * cdi;
+        resultado.custoOportunidade = cdi; // benchmark é o próprio CDI
+        resultado.spread            = taxa - 100; // spread em % do CDI
+
+        if (taxa >= 120)      { resultado.nivel='muito_alto'; resultado.label='Muito Alta'; resultado.cor='#16a34a'; resultado.score=95; }
+        else if (taxa >= 110) { resultado.nivel='alto';       resultado.label='Alta';       resultado.cor='#1DB954'; resultado.score=82; }
+        else if (taxa >= 100) { resultado.nivel='moderado';   resultado.label='Moderada';   resultado.cor='#F59E0B'; resultado.score=60; }
+        else if (taxa >= 90)  { resultado.nivel='baixo';      resultado.label='Baixa';      resultado.cor='#f97316'; resultado.score=35; }
+        else                  { resultado.nivel='muito_baixo';resultado.label='Muito Baixa';resultado.cor='#E74C3C'; resultado.score=15; }
+
+        resultado.descricao = 'Título pós-fixado de <strong>' + taxa.toFixed(0) + '% do CDI</strong> ('
+            + resultado.taxaAbsoluta.toFixed(2) + '% a.a.). CDI atual: <strong>' + cdi.toFixed(2) + '% a.a.</strong> — '
+            + (taxa > 100 ? 'rende acima do CDI.' : taxa === 100 ? 'rende exatamente o CDI.' : 'rende abaixo do CDI — avalie isenção fiscal para LCI/LCA.');
+
+    } else { // ipca+
+        // ── IPCA+: compara (spread + IPCA projetado) vs Selic média ──
+        var totalIPCA = taxa + mediaIPCA; // retorno nominal esperado
+        resultado.taxaAbsoluta      = totalIPCA;
+        resultado.custoOportunidade = mediaSelic;
+        resultado.spread            = totalIPCA - mediaSelic;
+
+        if (resultado.spread > 3)       { resultado.nivel='muito_alto'; resultado.label='Muito Alta'; resultado.cor='#16a34a'; resultado.score=95; }
+        else if (resultado.spread > 1.5){ resultado.nivel='alto';       resultado.label='Alta';       resultado.cor='#1DB954'; resultado.score=82; }
+        else if (resultado.spread > 0)  { resultado.nivel='moderado';   resultado.label='Moderada';   resultado.cor='#F59E0B'; resultado.score=62; }
+        else if (resultado.spread > -1.5){ resultado.nivel='baixo';     resultado.label='Baixa';      resultado.cor='#f97316'; resultado.score=35; }
+        else                            { resultado.nivel='muito_baixo';resultado.label='Muito Baixa';resultado.cor='#E74C3C'; resultado.score=15; }
+
+        resultado.descricao = 'IPCA+ <strong>' + taxa.toFixed(2) + '%</strong> + IPCA Focus '
+            + prazoEfetivo + 'm (<strong>' + mediaIPCA.toFixed(2) + '%</strong>) = retorno nominal de <strong>'
+            + totalIPCA.toFixed(2) + '% a.a.</strong> vs Selic média <strong>' + mediaSelic.toFixed(2) + '% a.a.</strong>. '
+            + (resultado.spread > 0
+                ? 'IPCA+ entrega retorno real protegido da inflação.'
+                : 'Verifique o spread — taxa real pode ser insuficiente.');
+    }
+
+    return resultado;
+}
+
+// ── Simulador de Rendimento ──────────────────────────────────────────
+function rf2_simularRendimento(valorInicial, prazoMeses, taxaAnual, isento, tipo, taxaCDI) {
+    var n = prazoMeses / 12;
+    var taxaEfetiva;
+    var cdiUsado;
+    var selicMediaFocus;
+
+    if (tipo === 'posfixado') {
+        // CDI = Selic média Focus do período − 0,10 pp
+        // Regra: prazo ≤ 12m → Selic 1 ano / ≤ 24m → Selic 2 anos / ≥ 36m → Selic 3 anos (cap)
+        selicMediaFocus = rf2_mediaSelic(Math.min(prazoMeses, 36));
+        cdiUsado = Math.max(selicMediaFocus - 0.10, 0);
+        // taxaAnual = % do CDI (ex: 100, 110, 90)
+        taxaEfetiva = (taxaAnual / 100) * cdiUsado;
+    } else {
+        // Prefixado / IPCA+: taxa já em % a.a.
+        taxaEfetiva = taxaAnual;
+        cdiUsado    = null;
+        selicMediaFocus = null;
+    }
+
+    // Label para exibição no resultado
+    var taxaDisplay = tipo === 'posfixado'
+        ? taxaAnual.toFixed(0) + '% do CDI'
+          + ' (Selic Focus ' + (selicMediaFocus ? selicMediaFocus.toFixed(2) : '—') + '% − 0,10 = CDI '
+          + cdiUsado.toFixed(2) + '% → ' + taxaEfetiva.toFixed(2) + '% a.a.)'
+        : taxaAnual.toFixed(2) + '% a.a.';
+
+    var fator = Math.pow(1 + taxaEfetiva / 100, n);
+    var valorBruto = valorInicial * fator;
+    var rendimento = valorBruto - valorInicial;
+
+    var ir = 0;
+    var valorLiquido = valorBruto;
+    if (!isento) {
+        var aliq = rf2_aliquotaIR(prazoMeses);
+        ir = rendimento * (aliq / 100);
+        valorLiquido = valorBruto - ir;
+    }
+
+    // Inflação acumulada
+    var ipcaAa = rf2_mediaIPCA(Math.min(prazoMeses, 36));
+    var fatorInflacao = Math.pow(1 + ipcaAa / 100, n);
+    var valorRealLiquido = valorLiquido / fatorInflacao;
+    var rendimentoReal = valorRealLiquido - valorInicial;
+    var rentRealPct = (rendimentoReal / valorInicial) * 100;
+
+    return {
+        valorInicial: valorInicial,
+        valorBruto: valorBruto,
+        rendimento: rendimento,
+        ir: ir,
+        valorLiquido: valorLiquido,
+        valorRealLiquido: valorRealLiquido,
+        rendimentoReal: rendimentoReal,
+        rentRealPct: rentRealPct,
+        taxaEfetiva: taxaEfetiva,
+        taxaDisplay: taxaDisplay,
+        cdiUsado: cdiUsado,
+        selicMediaFocus: selicMediaFocus,
+        ipcaAa: ipcaAa,
+        aliqIR: isento ? 0 : rf2_aliquotaIR(prazoMeses)
+    };
+}
+
+// ── Render card de atratividade (semáforo) ───────────────────────────
+function rf2_renderAttrCard(res) {
+    var score = res.score;
+    var needle = Math.min(Math.max(score, 2), 98);
+
+    // Semáforo 5 níveis
+    var semaforoHtml = '<div style="display:flex;gap:6px;margin-bottom:0.85rem">'
+        + ['muito_baixo','baixo','moderado','alto','muito_alto'].map(function(n) {
+            var labels = { muito_baixo:'Muito Baixa', baixo:'Baixa', moderado:'Moderada', alto:'Alta', muito_alto:'Muito Alta' };
+            var cores  = { muito_baixo:'#E74C3C', baixo:'#f97316', moderado:'#F59E0B', alto:'#1DB954', muito_alto:'#16a34a' };
+            var ativo = n === res.nivel;
+            return '<div style="flex:1;text-align:center;padding:0.35rem 0.2rem;border-radius:8px;font-size:0.7rem;font-weight:'+(ativo?'700':'400')+';'
+                + 'background:'+(ativo?cores[n]:'var(--dark3)')+';color:'+(ativo?'#fff':cores[n])+';'
+                + 'border:0.5px solid '+(ativo?cores[n]:'var(--border)')+';transition:all 0.3s">'
+                + labels[n] + '</div>';
+        }).join('')
+        + '</div>';
+
+    // Meter bar
+    var meterHtml = '<div class="attr2-row" style="margin-bottom:0.5rem">'
+        + '<div class="attr2-label" style="font-size:0.72rem">Escala</div>'
+        + '<div class="attr2-meter"><div class="attr2-needle" style="left:' + needle + '%"></div></div>'
+        + '<div class="attr2-score-lbl" style="color:' + res.cor + ';font-size:0.82rem">' + res.label + '</div>'
+        + '</div>'
+        + '<div class="attr2-legend" style="margin-bottom:0.75rem"><span>Muito Baixa</span><span>Moderada</span><span>Muito Alta</span></div>';
+
+    // Comparison box
+    var cmpHtml = '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:0.85rem">'
+
+        // Taxa do título
+        + '<div style="background:var(--dark3);border-radius:10px;padding:0.85rem;text-align:center;border:0.5px solid rgba(201,168,76,0.3)">'
+        + '<div style="font-size:0.65rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Taxa do Título</div>'
+        + '<div style="font-family:\'Playfair Display\',serif;font-size:1.4rem;color:var(--gold)">'
+        + (res.tipo==='posfixado' ? res.taxa.toFixed(0)+'%<span style="font-size:0.8rem"> CDI</span>'
+           : res.taxaAbsoluta.toFixed(2)+'%<span style="font-size:0.8rem"> a.a.</span>')
+        + '</div>'
+        + (res.tipo==='posfixado' ? '<div style="font-size:0.68rem;color:var(--muted2);margin-top:2px">= '+res.taxaAbsoluta.toFixed(2)+'% a.a.</div>' : '')
+        + (res.tipo==='ipca' ? '<div style="font-size:0.68rem;color:var(--muted2);margin-top:2px">spread '+res.taxa.toFixed(2)+'% + IPCA '+res.mediaIPCA.toFixed(2)+'%</div>' : '')
+        + '</div>'
+
+        // vs + spread
+        + '<div style="text-align:center">'
+        + '<div style="font-size:0.72rem;color:var(--muted);margin-bottom:2px">vs</div>'
+        + '<div style="font-size:1rem;font-weight:700;color:' + res.cor + '">'
+        + (res.tipo==='posfixado'
+            ? (res.spread>=0?'+':'')+res.spread.toFixed(0)+'%<div style="font-size:0.65rem;font-weight:400;color:var(--muted)">do CDI</div>'
+            : (res.spread>=0?'+':'')+res.spread.toFixed(2)+'<div style="font-size:0.65rem;font-weight:400;color:var(--muted)">p.p.</div>')
+        + '</div>'
+        + '</div>'
+
+        // Custo de oportunidade
+        + '<div style="background:var(--dark3);border-radius:10px;padding:0.85rem;text-align:center;border:0.5px solid rgba(59,130,246,0.3)">'
+        + '<div style="font-size:0.65rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Custo de Oportunidade</div>'
+        + '<div style="font-family:\'Playfair Display\',serif;font-size:1.4rem;color:#3B82F6">'
+        + (res.tipo==='posfixado' ? '100%<span style="font-size:0.8rem"> CDI</span>' : res.custoOportunidade.toFixed(2)+'%<span style="font-size:0.8rem"> a.a.</span>')
+        + '</div>'
+        + '<div style="font-size:0.68rem;color:var(--muted2);margin-top:2px">'
+        + (res.tipo==='posfixado' ? 'CDI atual: '+res.cdi.toFixed(2)+'% a.a.' : 'Selic média Focus '+res.prazoEfetivo+'m')
+        + '</div>'
+        + '</div>'
+
+        + '</div>'; // end comparison
+
+    // Focus data strip
+    var curAno = new Date().getFullYear();
+    var focusStrip = '<div style="font-size:0.68rem;color:var(--muted2);margin-bottom:0.75rem">'
+        + [0,1,2].map(function(i){
+            var a = String(curAno+i);
+            var vs = RF2.focusSELIC[a];
+            var vi = RF2.focusIPCA[a];
+            if (!vs && !vi) return '';
+            return 'Focus '+a+': Selic '+(vs?vs.toFixed(1)+'%':'—')+' · IPCA '+(vi?vi.toFixed(1)+'%':'—');
+        }).filter(Boolean).join(' &nbsp;|&nbsp; ')
+        + '</div>';
+
+    // Aviso > 36 meses
+    var avisoHtml = res.aviso36
+        ? '<div style="background:rgba(245,158,11,0.08);border:0.5px solid rgba(245,158,11,0.3);border-radius:8px;padding:0.6rem 0.85rem;font-size:0.78rem;color:#F59E0B;margin-bottom:0.75rem">⚠ Prazo superior a 36 meses: cálculo baseado na média Focus de 36 meses e pode sofrer alterações conforme novas projeções.</div>'
+        : '';
+
+    return semaforoHtml + meterHtml + cmpHtml + avisoHtml + focusStrip
+        + '<div class="attr2-context">' + res.descricao + '</div>';
+}
+
+// ── Atualiza label/unidade quando tipo muda ──────────────────────────
+function rf2_simTipoChange() {
+    var tipo   = document.getElementById('sim-tipo').value;
+    var lbl    = document.getElementById('sim-taxa-label');
+    var unit   = document.getElementById('sim-taxa-unit');
+    var input  = document.getElementById('sim-taxa');
+    var cdi    = RF2.cdiAtual || (RF2.selicAtual ? RF2.selicAtual - 0.10 : 10.65);
+    if (tipo === 'posfixado') {
+        if (lbl)   lbl.textContent  = '📈 Taxa (% do CDI)';
+        if (unit)  unit.textContent = '% do CDI';
+        if (input) { input.step = '1'; input.value = '100'; }
+        // Show Focus CDI hint
+        var hint = document.getElementById('sim-taxa-hint');
+        if (hint) {
+            var selicF = RF2.selicFocus || RF2.selicAtual || 10.75;
+            var cdiF   = (selicF - 0.10).toFixed(2);
+            hint.textContent = 'CDI Focus ~' + cdiF + '% a.a. (Selic ' + selicF.toFixed(2) + '% − 0,10)';
+            hint.style.display = 'block';
+        }
+    } else {
+        if (lbl)   lbl.textContent  = '📈 Taxa (% a.a.)';
+        if (unit)  unit.textContent = '% a.a.';
+        if (input) { input.step = '0.25'; input.value = parseFloat(cdi).toFixed(2); }
+        var hint2 = document.getElementById('sim-taxa-hint');
+        if (hint2) hint2.style.display = 'none';
+    }
+    rf2_renderSimulador();
+}
+
+// ── Render do simulador de rendimento ────────────────────────────────
+function rf2_renderSimulador() {
+    var valor    = parseFloat(document.getElementById('sim-valor').value)   || 10000;
+    var prazo    = parseInt(document.getElementById('sim-prazo').value)     || 36;
+    var taxa     = parseFloat(document.getElementById('sim-taxa').value)    || 100;
+    var isento   = document.getElementById('sim-isento').value === 'sim';
+    var tipo     = document.getElementById('sim-tipo').value;
+    var cdi      = RF2.cdiAtual || (RF2.selicAtual ? RF2.selicAtual - 0.10 : 10.65);
+
+    // Para pós-fixado, taxa = % do CDI (ex: 100, 110)
+    // rf2_simularRendimento já lida com isso internamente
+    var r = rf2_simularRendimento(valor, prazo, taxa, isento, tipo, cdi);
+
+    var fmtBRL = function(v) {
+        return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+    };
+
+    // Monta breakdown CDI para pós-fixado
+    var cdiBreakdown = '';
+    if (tipo === 'posfixado' && r.selicMediaFocus != null) {
+        cdiBreakdown = '<div style="background:rgba(59,130,246,0.08);border:0.5px solid rgba(59,130,246,0.2);border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:0.85rem;font-size:0.8rem;line-height:1.7">'
+            + '<strong style="color:#3B82F6">📐 Base de cálculo do CDI (Boletim Focus)</strong><br>'
+            + 'Prazo: <strong>' + prazo + ' meses</strong> → Selic média Focus: <strong>' + r.selicMediaFocus.toFixed(2) + '% a.a.</strong><br>'
+            + 'CDI = Selic Focus − 0,10 pp = <strong>' + r.cdiUsado.toFixed(2) + '% a.a.</strong><br>'
+            + taxa.toFixed(0) + '% do CDI = <strong style="color:var(--gold)">' + r.taxaEfetiva.toFixed(2) + '% a.a.</strong>'
+            + (prazo > 36 ? '<br><span style="color:#F59E0B;font-size:0.72rem">⚠ Prazo &gt; 36m: usando média Focus de 36 meses</span>' : '')
+            + '</div>';
+    }
+
+    var html = cdiBreakdown
+        + '<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.75rem">'
+        + '📊 Simulação: <strong style="color:var(--gold)">' + r.taxaDisplay + '</strong>'
+        + ' · Prazo: <strong>' + prazo + ' meses</strong>'
+        + (isento ? ' · <span style="color:#3B82F6">Isento IR</span>' : ' · IR <strong>' + r.aliqIR.toFixed(1) + '%</strong>')
+        + '</div>'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:1rem">'
+
+        + '<div class="calc-res-item"><div class="calc-res-lbl">Valor Aplicado</div>'
+        + '<div class="calc-res-val" style="font-size:1.1rem">' + fmtBRL(r.valorInicial) + '</div></div>'
+
+        + '<div class="calc-res-item" style="border:0.5px solid var(--border2)"><div class="calc-res-lbl">Valor Bruto Final</div>'
+        + '<div class="calc-res-val" style="color:var(--gold);font-size:1.1rem">' + fmtBRL(r.valorBruto) + '</div>'
+        + '<div class="calc-res-sub">rendimento bruto: ' + fmtBRL(r.rendimento) + '</div></div>'
+
+        + (isento ? '' :
+            '<div class="calc-res-item" style="border:0.5px solid rgba(231,76,60,0.3)"><div class="calc-res-lbl">Imposto de Renda</div>'
+            + '<div class="calc-res-val" style="color:#E74C3C;font-size:1.1rem">- ' + fmtBRL(r.ir) + '</div>'
+            + '<div class="calc-res-sub">alíquota ' + r.aliqIR.toFixed(1) + '% (' + prazo + ' meses)</div></div>'
+        )
+
+        + '<div class="calc-res-item" style="border:0.5px solid rgba(29,185,84,0.4);background:rgba(29,185,84,0.05)"><div class="calc-res-lbl">Valor Líquido Final</div>'
+        + '<div class="calc-res-val" style="color:#1DB954;font-size:1.2rem">' + fmtBRL(r.valorLiquido) + '</div>'
+        + '<div class="calc-res-sub">+ ' + fmtBRL(r.valorLiquido - r.valorInicial) + ' acima do aplicado</div></div>'
+
+        + '<div class="calc-res-item" style="border:0.5px solid rgba(139,92,246,0.35)"><div class="calc-res-lbl">Rentabilidade Real</div>'
+        + '<div class="calc-res-val" style="color:#8B5CF6;font-size:1.1rem">'
+        + (r.rentRealPct >= 0 ? '+' : '') + r.rentRealPct.toFixed(2) + '%</div>'
+        + '<div class="calc-res-sub">descontando IPCA ' + r.ipcaAa.toFixed(1) + '% a.a. (Focus)</div></div>'
+
+        + '</div>';
+
+    // Progress bar: aplicado → bruto → líquido
+    var pct = ((r.valorLiquido / r.valorBruto) * 100);
+    html += '<div style="font-size:0.72rem;color:var(--muted);margin-bottom:4px">Composição do resultado final</div>'
+        + '<div style="height:8px;background:var(--dark);border-radius:4px;overflow:hidden;display:flex;margin-bottom:0.5rem">'
+        + '<div style="width:' + ((r.valorInicial/r.valorBruto)*100).toFixed(1) + '%;background:#3B82F6;height:100%"></div>'
+        + '<div style="width:' + ((r.rendimento/r.valorBruto)*100).toFixed(1) + '%;background:#1DB954;height:100%"></div>'
+        + (isento ? '' : '<div style="width:' + ((r.ir/r.valorBruto)*100).toFixed(1) + '%;background:#E74C3C;height:100%"></div>')
+        + '</div>'
+        + '<div style="display:flex;gap:1rem;font-size:0.68rem;color:var(--muted2)">'
+        + '<span style="color:#3B82F6">■ Capital</span>'
+        + '<span style="color:#1DB954">■ Rendimento líquido</span>'
+        + (isento ? '' : '<span style="color:#E74C3C">■ IR</span>')
+        + '</div>';
+
+    var el = document.getElementById('rf2-sim-result');
+    if (el) el.innerHTML = html;
+}
+
+// ── Render da aba atratividade (substitui rf2_renderAttrV2) ──────────
+function rf2_renderAttrV2() {
+    var tipo       = document.getElementById('rf2-attr-tipo').value;
+    var taxa       = parseFloat(document.getElementById('rf2-attr-taxa').value);
+    var prazoMeses = parseInt(document.getElementById('rf2-attr-prazo').value) || 36;
+    if (isNaN(taxa)) return;
+
+    var unitEl = document.getElementById('rf2-attr-unit');
+    var units  = { posfixado: '% do CDI', prefixado: '% a.a.', ipca: '% spread + IPCA' };
+    if (unitEl) unitEl.textContent = units[tipo] || '% a.a.';
+
+    var res = rf2_analisarAtividade(tipo, taxa, prazoMeses);
+    var html = rf2_renderAttrCard(res);
+
+    var el = document.getElementById('rf2-attr-result');
+    if (el) el.innerHTML = html;
+}
+
+// ── Render da calculadora com prazo (V2 mantida) ─────────────────────
 function rf2_renderCalcV2() {
-    var cdiBase = parseFloat(document.getElementById('rf2-cdi-base').value);
+    var cdiBase    = parseFloat(document.getElementById('rf2-cdi-base').value);
     if (isNaN(cdiBase) || cdiBase <= 0) return;
-    var pctLCI = parseFloat(document.getElementById('rf2-pct-lci').value);
-    var pctCDB = parseFloat(document.getElementById('rf2-pct-cdb').value);
-    var prazoMeses = parseInt(document.getElementById('rf2-prazo').value) || 24;
+    var pctLCI     = parseFloat(document.getElementById('rf2-pct-lci').value);
+    var pctCDB     = parseFloat(document.getElementById('rf2-pct-cdb').value);
+    var prazoMeses = parseInt(document.getElementById('rf2-prazo').value) || 36;
     if (isNaN(pctLCI) || isNaN(pctCDB)) return;
 
-    var aliq = rf2_aliquotaIR(prazoMeses);
-    var taxaLCI = (pctLCI / 100) * cdiBase;
-    var taxaCDB = (pctCDB / 100) * cdiBase;
+    var aliq       = rf2_aliquotaIR(prazoMeses);
+    var taxaLCI    = (pctLCI / 100) * cdiBase;
+    var taxaCDB    = (pctCDB / 100) * cdiBase;
     var taxaCDB_liq = taxaCDB * (1 - aliq / 100);
-    var taxaLCI_liq = taxaLCI; // isento
-    var diff = taxaCDB_liq - taxaLCI_liq;
-    // CDB equiv = taxa que zerada o spread
-    var equiv = cdiBase > 0 ? (taxaLCI / (1 - aliq / 100) / cdiBase * 100) : 0;
+    var diff        = taxaCDB_liq - taxaLCI;
+    var equiv       = cdiBase > 0 ? (taxaLCI / (1 - aliq / 100) / cdiBase * 100) : 0;
 
-    var resultados = rf2_calcEquivalencia(cdiBase, pctLCI, pctCDB);
+    var resultados  = rf2_calcEquivalencia(cdiBase, pctLCI, pctCDB);
 
     var vencedorCls = Math.abs(diff) < 0.15 ? 'tie' : diff > 0 ? 'cdb-wins' : 'lci-wins';
     var vencedorTxt = Math.abs(diff) < 0.15
@@ -1295,9 +1634,8 @@ function rf2_renderCalcV2() {
         ? 'CDB ' + pctCDB.toFixed(0) + '% CDI vence após IR de ' + aliq + '%'
         : 'LCI/LCA ' + pctLCI.toFixed(0) + '% CDI vence pela isenção fiscal';
 
-    var html = '<div class="calc-result-title">Resultado · Prazo: ' + prazoMeses + ' meses</div>';
+    var html = '<div class="calc-result-title">Resultado · Prazo: ' + prazoMeses + ' meses · IR: ' + aliq.toFixed(1) + '%</div>';
 
-    // Summary
     html += '<div class="calc-res-grid">'
         + '<div class="calc-res-item"><div class="calc-res-lbl">CDI base</div><div class="calc-res-val" style="color:var(--gold)">' + cdiBase.toFixed(2) + '%</div><div class="calc-res-sub">taxa de referência</div></div>'
         + '<div class="calc-res-item"><div class="calc-res-lbl">LCI ' + pctLCI.toFixed(0) + '% CDI</div><div class="calc-res-val" style="color:#3B82F6">' + taxaLCI.toFixed(2) + '%</div><div class="calc-res-sub">isento · líquido</div></div>'
@@ -1305,28 +1643,27 @@ function rf2_renderCalcV2() {
         + '<div class="calc-res-item"><div class="calc-res-lbl">CDB equiv. à LCI</div><div class="calc-res-val" style="color:#1DB954">' + equiv.toFixed(1) + '% CDI</div><div class="calc-res-sub">para empatar no prazo</div></div>'
         + '</div>';
 
-    // IR table completa
     html += '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin:0.85rem 0 0.5rem">Comparativo por prazo (IR regressivo)</div>'
         + '<table class="ir-table"><thead><tr>'
         + '<th style="text-align:left">Prazo</th><th>IR</th>'
-        + '<th>CDB ' + pctCDB.toFixed(0) + '% liq.</th>'
-        + '<th>LCI ' + pctLCI.toFixed(0) + '% iso.</th>'
+        + '<th>CDB ' + pctCDB.toFixed(0) + '%</th>'
+        + '<th>LCI ' + pctLCI.toFixed(0) + '%</th>'
         + '<th>CDB equiv.</th><th>Vencedor</th>'
         + '</tr></thead><tbody>';
 
     for (var i = 0; i < resultados.length; i++) {
         var r = resultados[i];
-        var isSel = (i === 0 && prazoMeses <= 6) || (i === 1 && prazoMeses <= 12) || (i === 2 && prazoMeses <= 24) || (i === 3 && prazoMeses > 24);
+        var isSel = (i===0&&prazoMeses<=6)||(i===1&&prazoMeses<=12)||(i===2&&prazoMeses<=24)||(i===3&&prazoMeses>24);
         var rowSty = isSel ? ' style="background:rgba(201,168,76,0.08)"' : '';
-        var cdbCls = r.vencedor==='cdb' ? ' class="winner"' : '';
-        var lciCls = r.vencedor==='lci' ? ' class="winner"' : '';
+        var cdbCls = r.vencedor==='cdb'?' class="winner"':'';
+        var lciCls = r.vencedor==='lci'?' class="winner"':'';
         var selTag = isSel ? ' <span style="color:var(--gold);font-size:0.65rem">◀ seu prazo</span>' : '';
-        var vTxt = r.vencedor==='cdb' ? '<span style="color:var(--gold)">CDB ✓</span>' : r.vencedor==='lci' ? '<span style="color:#3B82F6">LCI ✓</span>' : '<span style="color:#1DB954">Empate</span>';
-        html += '<tr' + rowSty + '><td>' + r.label + selTag + '</td><td style="color:var(--muted)">' + r.ir.toFixed(1) + '%</td>'
-            + '<td' + cdbCls + '>' + r.taxaCDB_liq.toFixed(2) + '%</td>'
-            + '<td' + lciCls + '>' + r.taxaLCI_liq.toFixed(2) + '%</td>'
-            + '<td style="color:#1DB954">' + r.equiv_cdb_pct.toFixed(1) + '% CDI</td>'
-            + '<td>' + vTxt + '</td></tr>';
+        var vTxt   = r.vencedor==='cdb'?'<span style="color:var(--gold)">CDB ✓</span>':r.vencedor==='lci'?'<span style="color:#3B82F6">LCI ✓</span>':'<span style="color:#1DB954">Empate</span>';
+        html += '<tr'+rowSty+'><td>'+r.label+selTag+'</td><td style="color:var(--muted)">'+r.ir.toFixed(1)+'%</td>'
+            +'<td'+cdbCls+'>'+r.taxaCDB_liq.toFixed(2)+'%</td>'
+            +'<td'+lciCls+'>'+r.taxaLCI_liq.toFixed(2)+'%</td>'
+            +'<td style="color:#1DB954">'+r.equiv_cdb_pct.toFixed(1)+'% CDI</td>'
+            +'<td>'+vTxt+'</td></tr>';
     }
     html += '</tbody></table>';
     html += '<div class="calc-verdict ' + vencedorCls + '">' + vencedorTxt + '</div>';
@@ -1335,251 +1672,7 @@ function rf2_renderCalcV2() {
     if (el) el.innerHTML = html;
 }
 
-// ── 9. Render atratividade multi-anual ───────────────────────────
-function rf2_renderAttrV2() {
-    var tipo  = document.getElementById('rf2-attr-tipo').value;
-    var taxa  = parseFloat(document.getElementById('rf2-attr-taxa').value);
-    var prazoMeses = parseInt(document.getElementById('rf2-attr-prazo').value) || 24;
-    if (isNaN(taxa)) return;
 
-    var unitEl = document.getElementById('rf2-attr-unit');
-    var units = { posfixado: '% do CDI', prefixado: '% a.a.', ipca: '% + IPCA a.a.' };
-    if (unitEl) unitEl.textContent = units[tipo] || '% a.a.';
-
-    // Get multi-year focus data for the period
-    var anos = rf2_anosNoPeriodo(prazoMeses);
-    var focusMulti = {};
-    anos.forEach(function(a) {
-        var v = RF2.focusSELIC && RF2.focusSELIC[a];
-        if (v != null) focusMulti[a] = v;
-    });
-
-    var diData = RF2.diData || null;
-    var result = rf2_attrScoreMulti(tipo, taxa, prazoMeses, diData, focusMulti);
-
-    var score = result.score;
-    var needle = Math.min(Math.max(score, 2), 98);
-    var spread = result.spread;
-
-    var scoreLbl, scoreCls, attrTag;
-    if (score >= 75) {
-        scoreLbl = '🟢 Atratividade Alta';
-        scoreCls = 'color:#1DB954';
-        attrTag = '<span style="background:rgba(29,185,84,0.15);color:#1DB954;padding:0.2rem 0.7rem;border-radius:12px;font-size:0.75rem;font-weight:600">ATRATIVO</span>';
-    } else if (score >= 50) {
-        scoreLbl = '🟡 Atratividade Moderada';
-        scoreCls = 'color:#F59E0B';
-        attrTag = '<span style="background:rgba(245,158,11,0.15);color:#F59E0B;padding:0.2rem 0.7rem;border-radius:12px;font-size:0.75rem;font-weight:600">MODERADO</span>';
-    } else {
-        scoreLbl = '🔴 Pouco Atrativo';
-        scoreCls = 'color:#E74C3C';
-        attrTag = '<span style="background:rgba(231,76,60,0.15);color:#E74C3C;padding:0.2rem 0.7rem;border-radius:12px;font-size:0.75rem;font-weight:600">POUCO ATRATIVO</span>';
-    }
-
-    var spreadSty = spread >= 0 ? 'color:#1DB954' : 'color:#E74C3C';
-    var spreadStr = (spread >= 0 ? '+' : '') + spread.toFixed(2) + ' p.p.';
-
-    // Anos cobertos
-    var anosStr = anos.join(', ');
-    var focusStr = Object.keys(focusMulti).length > 0
-        ? 'Focus: ' + Object.keys(focusMulti).sort().map(function(a){ return a + '=' + focusMulti[a].toFixed(1) + '%'; }).join(', ')
-        : 'Dados Focus não disponíveis para o período';
-
-    // DI Futuro info
-    var diStr = '';
-    if (result.custo.fonte.indexOf('DI Futuro') >= 0) {
-        diStr = '<div style="font-size:0.72rem;color:#3B82F6;margin-top:4px">📈 ' + result.custo.label + ': ' + result.custo.taxa.toFixed(2) + '% a.a. (preço de mercado B3)</div>';
-    }
-
-    // Context
-    var ctx = '';
-    var ipcaMed = rf2_mediaGeometrica(RF2.focusIPCA || {}) || RF2.ipcaFocus || 4.5;
-    if (tipo === 'posfixado') {
-        var selicMg = rf2_mediaGeometrica(focusMulti);
-        ctx = 'Para os anos ' + anosStr + ', o Focus projeta Selic média de <strong>' + (selicMg ? selicMg.toFixed(2) + '%' : '—') + '</strong>. '
-            + (spread > 0 ? 'Seu título (CDI ' + taxa.toFixed(0) + '%) rende acima do custo de oportunidade.' : 'Avalie se a taxa justifica o prazo.');
-    } else if (tipo === 'prefixado') {
-        ctx = 'Custo de oportunidade (' + result.custo.fonte + '): <strong>' + result.custo.taxa.toFixed(2) + '%</strong>. '
-            + 'Sua taxa prefixada de <strong>' + taxa.toFixed(2) + '%</strong> oferece spread de <strong style="' + spreadSty + '">' + spreadStr + '</strong> sobre o mercado. '
-            + (spread > 1 ? 'Excelente oportunidade de travar a taxa!' : spread > 0 ? 'Levemente acima do mercado — aceitável.' : 'Abaixo do custo de oportunidade — reavalie.');
-    } else { // ipca+
-        ctx = 'IPCA médio projetado para o período: <strong>' + ipcaMed.toFixed(2) + '%</strong>. '
-            + 'Seu IPCA+ ' + taxa.toFixed(2) + '% oferece retorno real esperado de <strong>' + taxa.toFixed(2) + '%</strong> acima da inflação. '
-            + (taxa > 6 ? 'Historicamente acima da média — muito atrativo para longo prazo.' : taxa > 4 ? 'Taxa razoável para proteção inflacionária.' : 'Spread baixo — busque oportunidades com spread maior.');
-    }
-
-    var html = '';
-
-    // Taxa vs Custo de Oportunidade — visual comparison
-    html += '<div style="background:var(--dark2);border-radius:10px;padding:1rem;margin-bottom:1rem;border:0.5px solid var(--border)">'
-        + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem">'
-        + '<div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Taxa do Título vs Custo de Oportunidade</div>'
-        + attrTag + '</div>'
-
-        + '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:0.75rem">'
-
-        // Taxa do título
-        + '<div style="background:var(--dark3);border-radius:10px;padding:0.85rem;text-align:center;border:0.5px solid rgba(201,168,76,0.3)">'
-        + '<div style="font-size:0.68rem;color:var(--muted);margin-bottom:4px">Taxa do Título</div>'
-        + '<div style="font-family:\'Playfair Display\',serif;font-size:1.5rem;color:var(--gold)">' + (tipo==='posfixado' ? taxa.toFixed(0)+'% CDI' : taxa.toFixed(2)+'%') + '</div>'
-        + '<div style="font-size:0.7rem;color:var(--muted2);margin-top:3px">' + (tipo==='ipca'?'IPCA + spread':tipo==='prefixado'?'taxa fixa a.a.':'% do CDI') + '</div>'
-        + '</div>'
-
-        // Spread
-        + '<div style="text-align:center">'
-        + '<div style="font-size:1rem;font-weight:600;' + spreadSty + '">' + spreadStr + '</div>'
-        + '<div style="font-size:0.65rem;color:var(--muted2)">spread</div>'
-        + '</div>'
-
-        // Custo de oportunidade
-        + '<div style="background:var(--dark3);border-radius:10px;padding:0.85rem;text-align:center;border:0.5px solid rgba(59,130,246,0.3)">'
-        + '<div style="font-size:0.68rem;color:var(--muted);margin-bottom:4px">Custo de Oportunidade</div>'
-        + '<div style="font-family:\'Playfair Display\',serif;font-size:1.5rem;color:#3B82F6">' + result.custo.taxa.toFixed(2) + '%</div>'
-        + '<div style="font-size:0.7rem;color:var(--muted2);margin-top:3px">' + result.custo.fonte + '</div>'
-        + '</div>'
-
-        + '</div>'  // end comparison grid
-        + diStr
-        + '<div style="font-size:0.7rem;color:var(--muted2)">' + focusStr + '</div>'
-        + '</div>';
-
-    // Meter
-    html += '<div class="attr2-row">'
-        + '<div class="attr2-label">Atratividade</div>'
-        + '<div class="attr2-meter"><div class="attr2-needle" style="left:' + needle + '%"></div></div>'
-        + '<div class="attr2-score-lbl" style="' + scoreCls + '">' + scoreLbl + '</div>'
-        + '</div>'
-        + '<div class="attr2-legend"><span>Pouco atrativo</span><span>Moderado</span><span>Muito atrativo</span></div>'
-        + '<div class="attr2-context">' + ctx + '</div>';
-
-    var el = document.getElementById('rf2-attr-result');
-    if (el) el.innerHTML = html;
-}
-
-
-
-// ── Render calculadora result ────────────────────────────────────────
-function rf2_renderCalc() {
-    var cdiBase = parseFloat(document.getElementById('rf2-cdi-base').value);
-    if (isNaN(cdiBase) || cdiBase <= 0) return;
-
-    var pctLCI = parseFloat(document.getElementById('rf2-pct-lci').value);
-    var pctCDB = parseFloat(document.getElementById('rf2-pct-cdb').value);
-    if (isNaN(pctLCI) || isNaN(pctCDB)) return;
-
-    var resultados = rf2_calcEquivalencia(cdiBase, pctLCI, pctCDB);
-    var taxaLCI = (pctLCI / 100) * cdiBase;
-    var taxaCDB = (pctCDB / 100) * cdiBase;
-
-    // Summary cards
-    var html = '<div class="calc-result-title">Resultado da Comparação</div>';
-    html += '<div class="calc-res-grid">'
-        + '<div class="calc-res-item"><div class="calc-res-lbl">CDI base</div><div class="calc-res-val" style="color:var(--gold)">' + cdiBase.toFixed(2) + '%</div><div class="calc-res-sub">taxa de referência</div></div>'
-        + '<div class="calc-res-item"><div class="calc-res-lbl">LCI/LCA ' + pctLCI.toFixed(0) + '% CDI</div><div class="calc-res-val" style="color:#3B82F6">' + taxaLCI.toFixed(2) + '%</div><div class="calc-res-sub">isento de IR</div></div>'
-        + '<div class="calc-res-item"><div class="calc-res-lbl">CDB ' + pctCDB.toFixed(0) + '% CDI</div><div class="calc-res-val" style="color:var(--gold)">' + taxaCDB.toFixed(2) + '%</div><div class="calc-res-sub">bruto antes do IR</div></div>'
-        + '<div class="calc-res-item"><div class="calc-res-lbl">CDB equiv. (>720d)</div><div class="calc-res-val" style="color:#1DB954">' + resultados[3].equiv_cdb_pct.toFixed(1) + '%</div><div class="calc-res-sub">para empatar LCI ' + pctLCI.toFixed(0) + '% CDI</div></div>'
-        + '</div>';
-
-    // IR table
-    html += '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:0.5rem">Comparativo por prazo (IR regressivo)</div>'
-        + '<table class="ir-table">'
-        + '<thead><tr><th style="text-align:left">Prazo</th><th>IR</th><th>CDB ' + pctCDB.toFixed(0) + '% CDI líquido</th><th>LCI ' + pctLCI.toFixed(0) + '% CDI (isento)</th><th>CDB equiv. à LCI</th><th>Vencedor</th></tr></thead>'
-        + '<tbody>';
-
-    for (var i = 0; i < resultados.length; i++) {
-        var r = resultados[i];
-        var rowCls = i === 3 ? ' class="highlight-row"' : '';
-        var cdbCls = r.vencedor === 'cdb' ? ' class="winner"' : '';
-        var lciCls = r.vencedor === 'lci' ? ' class="winner"' : '';
-        var vencedorTxt = r.vencedor === 'cdb'
-            ? '<span style="color:var(--gold)">CDB ✓</span>'
-            : r.vencedor === 'lci'
-            ? '<span style="color:#3B82F6">LCI ✓</span>'
-            : '<span style="color:#1DB954">Empate</span>';
-        html += '<tr' + rowCls + '>'
-            + '<td>' + r.label + '</td>'
-            + '<td style="color:var(--muted)">' + r.ir.toFixed(1) + '%</td>'
-            + '<td' + cdbCls + '>' + r.taxaCDB_liq.toFixed(2) + '%</td>'
-            + '<td' + lciCls + '>' + r.taxaLCI_liq.toFixed(2) + '%</td>'
-            + '<td style="color:#1DB954">' + r.equiv_cdb_pct.toFixed(1) + '% CDI</td>'
-            + '<td>' + vencedorTxt + '</td>'
-            + '</tr>';
-    }
-    html += '</tbody></table>';
-
-    // Overall verdict
-    var lci720 = resultados[3].taxaLCI_liq;
-    var cdb720 = resultados[3].taxaCDB_liq;
-    var diff = cdb720 - lci720;
-    var verdictHtml, verdictCls;
-    if (Math.abs(diff) < 0.15) {
-        verdictHtml = '≈ Equivalentes — ambos os papéis oferecem retorno similar acima de 720 dias';
-        verdictCls = 'tie';
-    } else if (diff > 0) {
-        verdictHtml = '✓ CDB ' + pctCDB.toFixed(0) + '% CDI é mais rentável mesmo após IR — prefira-o se aceitar a tributação';
-        verdictCls = 'cdb-wins';
-    } else {
-        verdictHtml = '✓ LCI/LCA ' + pctLCI.toFixed(0) + '% CDI vence pela isenção fiscal — melhor para médio/longo prazo';
-        verdictCls = 'lci-wins';
-    }
-    html += '<div class="calc-verdict ' + verdictCls + '">' + verdictHtml + '</div>';
-
-    var el = document.getElementById('rf2-calc-result');
-    if (el) el.innerHTML = html;
-}
-
-// ── Render attractiveness ────────────────────────────────────────────
-function rf2_renderAttr() {
-    var tipo  = document.getElementById('rf2-attr-tipo').value;
-    var taxa  = parseFloat(document.getElementById('rf2-attr-taxa').value);
-    if (isNaN(taxa)) return;
-
-    var unitEl = document.getElementById('rf2-attr-unit');
-    var units = { posfixado: '% do CDI', prefixado: '% a.a.', ipca: '% + IPCA' };
-    if (unitEl) unitEl.textContent = units[tipo] || '% a.a.';
-
-    var selicAtual  = RF2.selicAtual  || 10.75;
-    var selicFocus  = RF2.selicFocus  || 10.50;
-    var cdiAtual    = RF2.cdiAtual    || (selicAtual - 0.10);
-
-    // Convert taxa to absolute for score
-    var taxaAbs = taxa;
-    if (tipo === 'posfixado') taxaAbs = (taxa / 100) * cdiAtual;
-    if (tipo === 'ipca')      taxaAbs = (RF2.ipcaFocus || 4.5) + taxa;
-
-    var score = rf2_attrScore(tipo, taxaAbs, selicAtual, selicFocus);
-    var needle = Math.min(Math.max(score, 2), 98);
-
-    var scoreLbl, scoreCls;
-    if (score >= 70) { scoreLbl = '🟢 Muito Atrativo'; scoreCls = 'color:#1DB954'; }
-    else if (score >= 50) { scoreLbl = '🟡 Moderado'; scoreCls = 'color:#F59E0B'; }
-    else { scoreLbl = '🔴 Pouco Atrativo'; scoreCls = 'color:#E74C3C'; }
-
-    var delta = selicFocus - selicAtual;
-    var ctx = '';
-    if (tipo === 'posfixado') {
-        if (delta < -0.5)      ctx = 'O Focus projeta <strong>queda da Selic de ' + selicAtual.toFixed(2) + '% para ' + selicFocus.toFixed(2) + '%</strong>. Pós-fixados perderão rendimento. Considere migrar para prefixados antes da queda.';
-        else if (delta > 0.5)  ctx = 'O Focus projeta <strong>alta da Selic</strong>. Pós-fixados são a melhor escolha — seu rendimento sobe automaticamente com a taxa.';
-        else                   ctx = 'Selic estável pelo Focus. Pós-fixados são opção segura para liquidez no curto prazo.';
-    } else if (tipo === 'prefixado') {
-        if (delta < -0.5)      ctx = '<strong>Momento ideal para prefixados!</strong> Com Selic projetada em queda (' + selicFocus.toFixed(2) + '%), travar a taxa atual é estratégico. Quanto maior o prazo, maior o ganho potencial.';
-        else if (delta > 0.5)  ctx = 'Prefixados são arriscados com Selic em alta — você trava uma taxa que pode ser superada pelo CDI. Prefira pós-fixados.';
-        else                   ctx = 'Selic estável. Prefixados são razoáveis para diversificação, mas analise o spread vs CDI atual.';
-    } else {
-        ctx = 'IPCA+ oferece proteção real contra inflação. Com Focus IPCA em ' + (RF2.ipcaFocus || '—') + '%, títulos IPCA+ com spread acima de 6% são historicamente atrativos para objetivos de longo prazo.';
-    }
-
-    var html = '<div class="attr2-row">'
-        + '<div class="attr2-label">Atratividade</div>'
-        + '<div class="attr2-meter"><div class="attr2-needle" style="left:' + needle + '%"></div></div>'
-        + '<div class="attr2-score-lbl" style="' + scoreCls + '">' + scoreLbl + '</div>'
-        + '</div>'
-        + '<div class="attr2-legend"><span>Pouco atrativo</span><span>Moderado</span><span>Muito atrativo</span></div>'
-        + '<div class="attr2-context">' + ctx + '</div>';
-
-    var el = document.getElementById('rf2-attr-result');
-    if (el) el.innerHTML = html;
-}
 
 // ── Main render ──────────────────────────────────────────────────────
 function rf2_render(panel) {
@@ -1684,7 +1777,7 @@ function rf2_render(panel) {
         + '<div class="calc-field"><label class="calc-label">Taxa da LCI/LCA</label>'
         + '<div class="calc-input-row"><input class="calc-in" id="rf2-pct-lci" type="number" value="90" step="0.5" oninput="rf2_renderCalcV2()" /><span class="calc-unit">% do CDI</span></div></div>'
         + '<div class="calc-field"><label class="calc-label">⏱ Prazo do investimento</label>'
-        + '<div class="calc-input-row"><input class="calc-in" id="rf2-prazo" type="number" value="24" min="1" max="120" step="1" oninput="rf2_renderCalcV2()" /><span class="calc-unit">meses</span></div>'
+        + '<div class="calc-input-row"><input class="calc-in" id="rf2-prazo" type="number" value="36" min="1" max="120" step="1" oninput="rf2_renderCalcV2()" /><span class="calc-unit">meses</span></div>'
         + '<div style="font-size:0.68rem;color:var(--muted2);margin-top:3px">Define alíquota IR e base de comparação Focus</div></div>'
         + '</div>'
 
@@ -1709,24 +1802,57 @@ function rf2_render(panel) {
 
     // ── Atratividade ──
     html += '<div class="rf2-section">'
-        + '<div class="rf2-section-title">📊 Atratividade do Título vs. Focus</div>'
+        + '<div class="rf2-section-title">📊 Atratividade do Título vs. Custo de Oportunidade Focus</div>'
         + '<div class="attr2-wrap">'
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:1rem">'
         + '<div class="calc-field"><label class="calc-label">Tipo de título</label>'
         + '<select class="calc-select calc-in-wide" id="rf2-attr-tipo" onchange="rf2_renderAttrV2()">'
-        + '<option value="posfixado">Pós-fixado (% CDI)</option>'
-        + '<option value="prefixado">Prefixado (taxa fixa)</option>'
-        + '<option value="ipca">IPCA+ (spread + inflação)</option>'
+        + '<option value="posfixado">Pós-fixado (% do CDI)</option>'
+        + '<option value="prefixado">Prefixado (taxa fixa % a.a.)</option>'
+        + '<option value="ipca">IPCA+ (spread % + inflação)</option>'
         + '</select></div>'
         + '<div class="calc-field"><label class="calc-label">Taxa do título</label>'
         + '<div class="calc-input-row"><input class="calc-in" id="rf2-attr-taxa" type="number" value="' + cdiBase.toFixed(2) + '" step="0.25" oninput="rf2_renderAttrV2()" />'
         + '<span class="calc-unit" id="rf2-attr-unit">% a.a.</span></div></div>'
-        + '<div class="calc-field"><label class="calc-label">⏱ Prazo do título (meses)</label>'
-        + '<div class="calc-input-row"><input class="calc-in" id="rf2-attr-prazo" type="number" value="24" min="1" max="120" step="1" oninput="rf2_renderAttrV2()" />'
+        + '<div class="calc-field"><label class="calc-label">⏱ Prazo (meses)</label>'
+        + '<div class="calc-input-row"><input class="calc-in" id="rf2-attr-prazo" type="number" value="36" min="1" max="120" step="1" oninput="rf2_renderAttrV2()" />'
         + '<span class="calc-unit">meses</span></div>'
-        + '<div style="font-size:0.68rem;color:var(--muted2);margin-top:3px">Ex: 24=2 anos, 48=4 anos. Usa DI Futuro ou média Focus para o período.</div></div>'
+        + '<div style="font-size:0.68rem;color:var(--muted2);margin-top:3px">12=1A · 24=2A · 36=3A · 48=4A · 60=5A</div></div>'
         + '</div>'
         + '<div id="rf2-attr-result"></div>'
+        + '</div></div>';
+
+    // ── Simulador de Rendimento ──
+    html += '<div class="rf2-section">'
+        + '<div class="rf2-section-title">💰 Simulador de Rendimento</div>'
+        + '<div style="background:var(--dark3);border-radius:12px;padding:1.1rem;border:0.5px solid var(--border);margin-bottom:1rem">'
+        + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:1rem">'
+
+        + '<div class="calc-field"><label class="calc-label">💵 Valor aplicado (R$)</label>'
+        + '<input class="calc-in calc-in-wide" id="sim-valor" type="number" value="10000" step="1000" oninput="rf2_renderSimulador()" /></div>'
+
+        + '<div class="calc-field"><label class="calc-label">⏱ Prazo (meses)</label>'
+        + '<input class="calc-in calc-in-wide" id="sim-prazo" type="number" value="36" min="1" max="120" step="1" oninput="rf2_renderSimulador()" /></div>'
+
+        + '<div class="calc-field"><label class="calc-label" id="sim-taxa-label">📈 Taxa (% a.a.)</label>'
+        + '<div class="calc-input-row"><input class="calc-in" style="width:100px" id="sim-taxa" type="number" value="' + cdiBase.toFixed(2) + '" step="0.25" oninput="rf2_renderSimulador()" />'
+        + '<span class="calc-unit" id="sim-taxa-unit">% a.a.</span></div>'
+        + '<div id="sim-taxa-hint" style="display:none;font-size:0.68rem;color:#3B82F6;margin-top:3px"></div></div>'
+
+        + '<div class="calc-field"><label class="calc-label">📋 Tipo</label>'
+        + '<select class="calc-select calc-in-wide" id="sim-tipo" onchange="rf2_simTipoChange()">'
+        + '<option value="prefixado">Prefixado / IPCA+ (% a.a.)</option>'
+        + '<option value="posfixado">Pós-fixado (% do CDI)</option>'
+        + '</select></div>'
+
+        + '<div class="calc-field"><label class="calc-label">🏷 Isento de IR?</label>'
+        + '<select class="calc-select calc-in-wide" id="sim-isento" onchange="rf2_renderSimulador()">'
+        + '<option value="nao">Não (CDB, LC)</option>'
+        + '<option value="sim">Sim (LCI, LCA, Deb. Incentivada)</option>'
+        + '</select></div>'
+
+        + '</div>'
+        + '<div id="rf2-sim-result"><div style="color:var(--muted);font-size:0.85rem;text-align:center;padding:1rem">Ajuste os campos acima para simular</div></div>'
         + '</div></div>';
 
     // Source
@@ -1742,6 +1868,7 @@ function rf2_render(panel) {
     setTimeout(function() {
         rf2_renderCalcV2();
         rf2_renderAttrV2();
+        rf2_renderSimulador();
     }, 80);
 }
 
@@ -2419,6 +2546,628 @@ async function loadFocusDashboard(container) {
         calcCDIPanel();
         calcAttrPanel();
     }, 100);
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// MÓDULO FIIs — Análise Fundamentalista com Brapi
+// 4 Pilares: Cards Overview · Modal Research · Alertas · Formatação
+// ═══════════════════════════════════════════════════════════════════
+
+var FII_CSS = `
+/* ─── FII MODULE ─── */
+.fii-wrap { padding:0; }
+.fii-toolbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:1.25rem; }
+.fii-toolbar-title { font-family:'Playfair Display',serif; font-size:1.2rem; color:#F3F4F8; }
+.fii-toolbar-sub { font-size:0.78rem; color:var(--muted); margin-top:2px; }
+.fii-live-badge { display:flex; align-items:center; gap:6px; background:rgba(29,185,84,0.08); border:0.5px solid rgba(29,185,84,0.25); border-radius:20px; padding:0.3rem 0.85rem; font-size:0.72rem; color:#1DB954; }
+.fii-live-dot { width:6px; height:6px; border-radius:50%; background:#1DB954; animation:pulse 2s infinite; }
+.fii-live-dot.err { background:#E74C3C; animation:none; }
+
+/* Alert banner */
+.fii-alerts { margin-bottom:1rem; display:flex; flex-direction:column; gap:6px; }
+.fii-alert { display:flex; align-items:center; gap:10px; padding:0.65rem 1rem; border-radius:10px; font-size:0.82rem; font-weight:500; }
+.fii-alert.preco { background:rgba(29,185,84,0.12); border:0.5px solid rgba(29,185,84,0.3); color:#1DB954; }
+.fii-alert.com   { background:rgba(201,168,76,0.12); border:0.5px solid rgba(201,168,76,0.3); color:var(--gold); }
+.fii-alert-icon { font-size:1rem; flex-shrink:0; }
+
+/* Search & controls */
+.fii-controls { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1.25rem; align-items:center; }
+.fii-search-in { background:var(--dark3); border:0.5px solid var(--border); border-radius:8px; padding:0.55rem 0.85rem; color:var(--text); font-size:0.88rem; outline:none; font-family:'DM Sans',sans-serif; width:160px; }
+.fii-search-in:focus { border-color:var(--gold); }
+.fii-add-btn { background:var(--gold); color:var(--dark); border:none; border-radius:8px; padding:0.55rem 1rem; font-size:0.85rem; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.fii-filter-btn { background:transparent; color:var(--muted); border:0.5px solid var(--border); border-radius:8px; padding:0.5rem 0.85rem; font-size:0.78rem; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; }
+.fii-filter-btn.active { border-color:var(--gold); color:var(--gold); background:rgba(201,168,76,0.08); }
+
+/* Cards grid */
+.fii-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:1rem; }
+.fii-card { background:var(--dark2); border:0.5px solid var(--border); border-radius:14px; padding:1.25rem; cursor:pointer; transition:all 0.25s; position:relative; overflow:hidden; }
+.fii-card:hover { border-color:rgba(201,168,76,0.4); transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.3); }
+.fii-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; border-radius:14px 14px 0 0; }
+.fii-card.papel::before   { background:linear-gradient(90deg,#3B82F6,#60a5fa); }
+.fii-card.tijolo::before  { background:linear-gradient(90deg,#92400e,#b45309); }
+.fii-card.hibrido::before { background:linear-gradient(90deg,#6b7280,#9ca3af); }
+.fii-card.fof::before     { background:linear-gradient(90deg,#7c3aed,#a78bfa); }
+
+.fii-card-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:0.85rem; }
+.fii-ticker { font-family:'Playfair Display',serif; font-size:1.3rem; color:#F3F4F8; line-height:1; }
+.fii-segmento { font-size:0.72rem; color:var(--muted); margin-top:3px; }
+.fii-seg-badge { font-size:0.68rem; font-weight:600; padding:0.2rem 0.65rem; border-radius:12px; letter-spacing:0.04em; text-transform:uppercase; }
+.fii-seg-badge.papel   { background:rgba(59,130,246,0.15); color:#3B82F6; border:0.5px solid rgba(59,130,246,0.3); }
+.fii-seg-badge.tijolo  { background:rgba(146,64,14,0.2);  color:#b45309;  border:0.5px solid rgba(146,64,14,0.3);  }
+.fii-seg-badge.hibrido { background:rgba(107,114,128,0.2);color:#9ca3af;  border:0.5px solid rgba(107,114,128,0.3);}
+.fii-seg-badge.fof     { background:rgba(124,58,237,0.15); color:#a78bfa;  border:0.5px solid rgba(124,58,237,0.3); }
+
+.fii-preco-row { display:flex; align-items:baseline; gap:8px; margin-bottom:4px; }
+.fii-preco { font-family:'Playfair Display',serif; font-size:1.5rem; color:#F3F4F8; line-height:1; font-variant-numeric:tabular-nums; }
+.fii-chg { font-size:0.8rem; font-weight:500; padding:0.2rem 0.6rem; border-radius:12px; }
+.fii-chg.up { background:rgba(29,185,84,0.12); color:#1DB954; }
+.fii-chg.dn { background:rgba(231,76,60,0.12); color:#E74C3C; }
+.fii-nav-row { font-size:0.75rem; color:var(--muted); margin-bottom:0.85rem; }
+
+.fii-pvp { display:inline-flex; align-items:center; gap:4px; padding:0.2rem 0.65rem; border-radius:12px; font-size:0.75rem; font-weight:600; }
+.fii-pvp.desconto { background:rgba(29,185,84,0.12); color:#1DB954; border:0.5px solid rgba(29,185,84,0.28); }
+.fii-pvp.premio   { background:rgba(245,158,11,0.12); color:#F59E0B; border:0.5px solid rgba(245,158,11,0.28); }
+
+.fii-metrics { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:0.85rem; }
+.fii-metric { background:var(--dark3); border-radius:8px; padding:0.65rem 0.75rem; }
+.fii-metric-lbl { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:3px; }
+.fii-metric-val { font-size:0.9rem; font-weight:500; color:#F3F4F8; font-variant-numeric:tabular-nums; }
+.fii-metric-val.yield { color:#1DB954; }
+
+.fii-footer { display:flex; align-items:center; justify-content:space-between; margin-top:0.85rem; padding-top:0.75rem; border-top:0.5px solid var(--border); font-size:0.72rem; color:var(--muted2); }
+.fii-alvo-btn { font-size:0.68rem; color:var(--gold); cursor:pointer; background:none; border:none; font-family:'DM Sans',sans-serif; padding:0; text-decoration:underline; }
+
+/* Alvo input */
+.fii-alvo-row { display:flex; align-items:center; gap:6px; margin-top:6px; }
+.fii-alvo-in { background:var(--dark); border:0.5px solid var(--border); border-radius:6px; padding:0.3rem 0.6rem; color:var(--text); font-size:0.8rem; outline:none; font-family:'DM Sans',sans-serif; width:90px; }
+.fii-alvo-set { background:var(--gold); color:var(--dark); border:none; border-radius:6px; padding:0.3rem 0.65rem; font-size:0.75rem; cursor:pointer; font-family:'DM Sans',sans-serif; }
+
+/* Modal */
+.fii-modal-overlay { display:none; position:fixed; inset:0; z-index:600; background:rgba(0,0,0,0.8); align-items:flex-start; justify-content:center; padding:2rem 1rem; overflow-y:auto; }
+.fii-modal-overlay.open { display:flex; }
+.fii-modal { background:var(--dark2); border:0.5px solid var(--border2); border-radius:16px; max-width:900px; width:100%; padding:1.75rem; position:relative; }
+.fii-modal-close { position:absolute; top:1.25rem; right:1.25rem; background:var(--dark3); border:0.5px solid var(--border); border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--muted); font-size:1rem; transition:all 0.2s; }
+.fii-modal-close:hover { color:var(--text); border-color:var(--gold); }
+
+.fii-modal-header { margin-bottom:1.5rem; }
+.fii-modal-ticker { font-family:'Playfair Display',serif; font-size:1.8rem; color:#F3F4F8; }
+.fii-modal-sub { font-size:0.82rem; color:var(--muted); margin-top:4px; }
+.fii-modal-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:10px; margin-bottom:1.5rem; }
+.fii-modal-card { background:var(--dark3); border-radius:10px; padding:0.85rem 1rem; }
+.fii-modal-lbl { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin-bottom:5px; }
+.fii-modal-val { font-size:0.95rem; font-weight:500; font-variant-numeric:tabular-nums; }
+
+.fii-charts-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; }
+@media(max-width:640px){ .fii-charts-row { grid-template-columns:1fr; } }
+.fii-chart-card { background:var(--dark3); border-radius:12px; padding:1rem; }
+.fii-chart-title { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--muted); margin-bottom:0.85rem; }
+.fii-chart-wrap { position:relative; height:180px; }
+
+.fii-insight-box { background:rgba(201,168,76,0.06); border:0.5px solid rgba(201,168,76,0.2); border-radius:10px; padding:0.85rem 1rem; margin-top:0.85rem; font-size:0.8rem; color:var(--muted); line-height:1.6; }
+.fii-insight-box strong { color:var(--gold); }
+
+.fii-donut-legend { display:flex; flex-direction:column; gap:5px; margin-top:0.75rem; }
+.fii-donut-item { display:flex; align-items:center; gap:8px; font-size:0.75rem; color:var(--muted); }
+.fii-donut-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+
+.fii-eficiencia { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.fii-ef-card { background:var(--dark3); border-radius:10px; padding:0.8rem; text-align:center; }
+.fii-ef-lbl { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:4px; }
+.fii-ef-val { font-size:1rem; font-weight:500; }
+
+.fii-empty { text-align:center; padding:3rem 1rem; color:var(--muted); }
+.fii-loading-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1rem; }
+.fii-skeleton { background:var(--dark2); border:0.5px solid var(--border); border-radius:14px; padding:1.25rem; animation:shimmer 1.5s infinite; }
+@keyframes shimmer { 0%{opacity:1} 50%{opacity:0.5} 100%{opacity:1} }
+.fii-skel-line { background:var(--dark3); border-radius:6px; margin-bottom:8px; }
+`;
+
+// ── Helpers ──────────────────────────────────────────────────────────
+function fii_brl(v) {
+    if (v == null || isNaN(v)) return '—';
+    return 'R$ ' + (+v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fii_pct(v, dec) {
+    if (v == null || isNaN(v)) return '—';
+    dec = dec || 2;
+    return (+v).toFixed(dec) + '%';
+}
+function fii_num(v) {
+    if (v == null || isNaN(v)) return '—';
+    if (Math.abs(v) >= 1e9)  return 'R$ ' + (v/1e9).toFixed(2)  + 'B';
+    if (Math.abs(v) >= 1e6)  return 'R$ ' + (v/1e6).toFixed(1)  + 'M';
+    if (Math.abs(v) >= 1e3)  return 'R$ ' + (v/1e3).toFixed(1)  + 'K';
+    return 'R$ ' + (+v).toFixed(2);
+}
+function fii_date(s) {
+    if (!s) return '—';
+    try {
+        var d = new Date(s);
+        return d.toLocaleDateString('pt-BR');
+    } catch(e) { return s; }
+}
+function fii_segClass(type) {
+    if (!type) return 'hibrido';
+    var t = type.toLowerCase();
+    if (t.includes('papel') || t.includes('recebivel')) return 'papel';
+    if (t.includes('tijolo') || t.includes('logistico') || t.includes('lajes') || t.includes('shopping')) return 'tijolo';
+    if (t.includes('fof') || t.includes('fundo')) return 'fof';
+    return 'hibrido';
+}
+function fii_segLabel(type) {
+    if (!type) return 'Híbrido';
+    var t = type.toLowerCase();
+    if (t.includes('papel'))   return 'Papel';
+    if (t.includes('tijolo'))  return 'Tijolo';
+    if (t.includes('fof'))     return 'FoF';
+    return 'Híbrido';
+}
+
+// ── State ────────────────────────────────────────────────────────────
+var FII_STATE = {
+    fiis: [],           // [{symbol, data, dividends, reports}]
+    alvos: {},          // {symbol: precoAlvo}
+    activeFilter: 'todos',
+    charts: {}          // Chart.js instances keyed by id
+};
+
+// Default FIIs to load
+var FII_DEFAULT = ['MXRF11','XPML11','HGLG11','KNRI11','BCFF11','VISC11','HSML11','BTLG11'];
+
+// ── Fetch FII data from Brapi ─────────────────────────────────────────
+async function fii_fetchOne(symbol) {
+    var bt = getBT();
+    try {
+        // Quote + fundamentals
+        var urlQ = 'https://brapi.dev/api/quote/' + symbol + '?fundamental=true' + (bt ? '&token=' + bt : '');
+        var rQ = await fetch(urlQ);
+        if (!rQ.ok) throw new Error('not found');
+        var dQ = await rQ.json();
+        var quote = dQ.results && dQ.results[0] ? dQ.results[0] : null;
+        if (!quote) throw new Error('no data');
+
+        // Dividends
+        var urlD = 'https://brapi.dev/api/v2/funds/' + symbol + '/dividends' + (bt ? '?token=' + bt : '');
+        var divs = [];
+        try {
+            var rD = await fetch(urlD);
+            if (rD.ok) { var dD = await rD.json(); divs = dD.dividends || dD.results || []; }
+        } catch(e) {}
+
+        // Reports (portfolio composition)
+        var urlR = 'https://brapi.dev/api/v2/funds/' + symbol + '/reports' + (bt ? '?token=' + bt : '');
+        var reports = [];
+        try {
+            var rR = await fetch(urlR);
+            if (rR.ok) { var dR = await rR.json(); reports = dR.reports || dR.results || []; }
+        } catch(e) {}
+
+        return { symbol: symbol, quote: quote, dividends: divs, reports: reports, ok: true };
+    } catch(e) {
+        return { symbol: symbol, quote: null, dividends: [], reports: [], ok: false, error: e.message };
+    }
+}
+
+// ── Alertas ──────────────────────────────────────────────────────────
+function fii_checkAlertas() {
+    var alerts = [];
+    var hoje = new Date();
+    var em3Dias = new Date(hoje.getTime() + 3 * 86400000);
+
+    FII_STATE.fiis.forEach(function(f) {
+        if (!f.ok || !f.quote) return;
+        var sym = f.symbol;
+        var price = f.quote.regularMarketPrice;
+
+        // Alerta de preço alvo
+        var alvo = FII_STATE.alvos[sym];
+        if (alvo && price && price <= alvo) {
+            alerts.push({ tipo: 'preco', msg: '🎯 Oportunidade: ' + sym + ' atingiu o preço alvo de ' + fii_brl(alvo) + ' (atual: ' + fii_brl(price) + ')' });
+        }
+
+        // Alerta Data COM (últimos dividendos)
+        if (f.dividends && f.dividends.length > 0) {
+            f.dividends.slice(0, 3).forEach(function(div) {
+                var com = div.lastDatePrior || div.dateCom || div.dateEx;
+                if (!com) return;
+                try {
+                    var dCom = new Date(com);
+                    if (dCom >= hoje && dCom <= em3Dias) {
+                        alerts.push({ tipo: 'com', msg: '📅 Data COM próxima para ' + sym + ' em ' + fii_date(com) + ' — Garanta seus dividendos!' });
+                    }
+                } catch(e) {}
+            });
+        }
+    });
+    return alerts;
+}
+
+function fii_renderAlertas() {
+    var el = document.getElementById('fii-alerts');
+    if (!el) return;
+    var alerts = fii_checkAlertas();
+    if (alerts.length === 0) { el.innerHTML = ''; return; }
+    el.innerHTML = alerts.map(function(a) {
+        return '<div class="fii-alert ' + a.tipo + '"><span class="fii-alert-icon">' + (a.tipo==='preco'?'🎯':'📅') + '</span>' + a.msg + '</div>';
+    }).join('');
+}
+
+// ── Render card ──────────────────────────────────────────────────────
+function fii_renderCard(f) {
+    if (!f.ok || !f.quote) {
+        return '<div class="fii-card" style="opacity:0.5">'
+            + '<div class="fii-card-header"><div><div class="fii-ticker">' + f.symbol + '</div><div class="fii-segmento">Erro ao carregar dados</div></div></div>'
+            + '<div style="font-size:0.8rem;color:var(--red)">API indisponível para este ativo</div>'
+            + '</div>';
+    }
+
+    var q = f.quote;
+    var sym = f.symbol;
+    var price = q.regularMarketPrice;
+    var chgPct = q.regularMarketChangePercent;
+    var nav = q.navPerShare || q.bookValue;
+    var pvp = (price && nav && nav > 0) ? price / nav : null;
+    var dy12 = q.dividendYield;
+    var dy1m = q.dividendYield ? q.dividendYield / 12 : null;
+    var equity = q.marketCap || q.equity;
+    var manager = q.longName || q.shortName || sym;
+    var segType = fii_segClass(q.sector || q.segment || '');
+    var segLabel = fii_segLabel(q.sector || q.segment || '');
+    var alvo = FII_STATE.alvos[sym];
+    var isAlvoHit = alvo && price && price <= alvo;
+
+    var chgCls = chgPct >= 0 ? 'up' : 'dn';
+    var pvpCls  = pvp ? (pvp < 1 ? 'desconto' : 'premio') : '';
+    var pvpTxt  = pvp ? (pvp < 1 ? '▼ P/VP ' + pvp.toFixed(2) + ' Desconto' : '▲ P/VP ' + pvp.toFixed(2) + ' Prêmio') : '—';
+
+    var cardBorder = isAlvoHit ? 'border-color:rgba(29,185,84,0.6)' : '';
+
+    return '<div class="fii-card ' + segType + '" style="' + cardBorder + '" onclick="fii_openModal(\'' + sym + '\')">'
+        // header
+        + '<div class="fii-card-header">'
+        + '<div><div class="fii-ticker">' + sym + '</div><div class="fii-segmento">' + (q.longName || q.shortName || '—').substring(0,40) + '</div></div>'
+        + '<span class="fii-seg-badge ' + segType + '">' + segLabel + '</span>'
+        + '</div>'
+
+        // preço
+        + '<div class="fii-preco-row">'
+        + '<div class="fii-preco">' + fii_brl(price) + '</div>'
+        + (chgPct != null ? '<span class="fii-chg ' + chgCls + '">' + (chgPct>=0?'+':'') + fii_pct(chgPct) + '</span>' : '')
+        + '</div>'
+        + '<div class="fii-nav-row">VP/cota: ' + fii_brl(nav) + ' &nbsp;'
+        + (pvp ? '<span class="fii-pvp ' + pvpCls + '">' + pvpTxt + '</span>' : '')
+        + '</div>'
+
+        // metrics grid
+        + '<div class="fii-metrics">'
+        + '<div class="fii-metric"><div class="fii-metric-lbl">DY 12 meses</div><div class="fii-metric-val yield">' + (dy12 ? fii_pct(dy12) : '—') + '</div></div>'
+        + '<div class="fii-metric"><div class="fii-metric-lbl">DY 1 mês est.</div><div class="fii-metric-val yield">' + (dy1m ? fii_pct(dy1m) : '—') + '</div></div>'
+        + '<div class="fii-metric"><div class="fii-metric-lbl">Patrimônio</div><div class="fii-metric-val">' + fii_num(equity) + '</div></div>'
+        + '<div class="fii-metric"><div class="fii-metric-lbl">Vol. 52s Máx</div><div class="fii-metric-val">' + fii_brl(q.fiftyTwoWeekHigh) + '</div></div>'
+        + '</div>'
+
+        // footer
+        + '<div class="fii-footer">'
+        + '<span>' + (q.shortName || manager).substring(0,28) + '</span>'
+        + '<button class="fii-alvo-btn" onclick="event.stopPropagation();fii_toggleAlvo(\'' + sym + '\')">'
+        + (alvo ? '🎯 Alvo: ' + fii_brl(alvo) : '+ Definir alvo') + '</button>'
+        + '</div>'
+        + '<div id="alvo-row-' + sym + '" style="display:none">'
+        + '<div class="fii-alvo-row">'
+        + '<input class="fii-alvo-in" id="alvo-in-' + sym + '" type="number" placeholder="R$ alvo" step="0.01" value="' + (alvo||'') + '" onclick="event.stopPropagation()" />'
+        + '<button class="fii-alvo-set" onclick="event.stopPropagation();fii_setAlvo(\'' + sym + '\')">Salvar</button>'
+        + '</div></div>'
+        + '</div>';
+}
+
+// ── Alvo handlers ─────────────────────────────────────────────────────
+function fii_toggleAlvo(sym) {
+    var row = document.getElementById('alvo-row-' + sym);
+    if (row) row.style.display = row.style.display === 'none' ? 'block' : 'none';
+}
+function fii_setAlvo(sym) {
+    var el = document.getElementById('alvo-in-' + sym);
+    if (!el) return;
+    var v = parseFloat(el.value);
+    if (!isNaN(v) && v > 0) {
+        FII_STATE.alvos[sym] = v;
+        localStorage.setItem('fii_alvos', JSON.stringify(FII_STATE.alvos));
+        fii_renderGrid();
+        fii_renderAlertas();
+        toast('Alvo R$ ' + fii_brl(v) + ' definido para ' + sym);
+    }
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────
+function fii_openModal(sym) {
+    var f = null;
+    for (var i=0; i<FII_STATE.fiis.length; i++) { if (FII_STATE.fiis[i].symbol===sym) { f=FII_STATE.fiis[i]; break; } }
+    if (!f || !f.ok) return;
+
+    var q = f.quote;
+    var divs = f.dividends || [];
+    var reps = f.reports || [];
+    var lastRep = reps.length > 0 ? reps[0] : null;
+
+    // Sort dividends by date desc
+    var divsSort = divs.slice().sort(function(a,b){
+        return new Date(b.paymentDate||b.relatedTo||0) - new Date(a.paymentDate||a.relatedTo||0);
+    }).slice(0,12);
+
+    // Avg dividend
+    var avgDiv = 0;
+    if (divsSort.length > 0) {
+        var sum = 0;
+        divsSort.forEach(function(d){ sum += (d.rate||d.value||0); });
+        avgDiv = sum / divsSort.length;
+    }
+
+    // Portfolio composition from last report
+    var compData = null;
+    if (lastRep) {
+        compData = {
+            imoveis:    lastRep.realEstateAssets || 0,
+            caixa:      lastRep.cash || 0,
+            cri:        lastRep.cri || lastRep.receivables || 0,
+            fii:        lastRep.fiiHoldings || 0,
+            outros:     (lastRep.otherAssets || 0)
+        };
+    }
+
+    var nav = q.navPerShare || q.bookValue;
+    var pvp = (q.regularMarketPrice && nav && nav > 0) ? q.regularMarketPrice / nav : null;
+    var segType = fii_segClass(q.sector || q.segment || '');
+
+    var html = '<div class="fii-modal-header">'
+        + '<div class="fii-modal-ticker">' + sym
+        + ' <span class="fii-seg-badge ' + segType + '" style="font-size:0.72rem">' + fii_segLabel(q.sector||q.segment||'') + '</span></div>'
+        + '<div class="fii-modal-sub">' + (q.longName||sym) + '</div>'
+        + '</div>';
+
+    // Key metrics
+    html += '<div class="fii-modal-grid">'
+        + '<div class="fii-modal-card"><div class="fii-modal-lbl">Preço atual</div><div class="fii-modal-val" style="color:var(--gold)">' + fii_brl(q.regularMarketPrice) + '</div></div>'
+        + '<div class="fii-modal-card"><div class="fii-modal-lbl">VP/cota</div><div class="fii-modal-val">' + fii_brl(nav) + '</div></div>'
+        + '<div class="fii-modal-card"><div class="fii-modal-lbl">P/VP</div><div class="fii-modal-val ' + (pvp?pvp<1?'':'':' ') + '" style="color:' + (pvp?(pvp<1?'#1DB954':'#F59E0B'):'var(--muted)') + '">' + (pvp?pvp.toFixed(2):'—') + '</div></div>'
+        + '<div class="fii-modal-card"><div class="fii-modal-lbl">DY 12 meses</div><div class="fii-modal-val" style="color:#1DB954">' + fii_pct(q.dividendYield) + '</div></div>'
+        + '<div class="fii-modal-card"><div class="fii-modal-lbl">Patrimônio</div><div class="fii-modal-val">' + fii_num(q.marketCap||q.equity) + '</div></div>'
+        + '<div class="fii-modal-card"><div class="fii-modal-lbl">Último div.</div><div class="fii-modal-val" style="color:#1DB954">' + (divsSort[0]?fii_brl(divsSort[0].rate||divsSort[0].value):'—') + '</div></div>'
+        + '<div class="fii-modal-card"><div class="fii-modal-lbl">52S Máx</div><div class="fii-modal-val">' + fii_brl(q.fiftyTwoWeekHigh) + '</div></div>'
+        + '<div class="fii-modal-card"><div class="fii-modal-lbl">52S Mín</div><div class="fii-modal-val">' + fii_brl(q.fiftyTwoWeekLow) + '</div></div>'
+        + '</div>';
+
+    // Charts row
+    html += '<div class="fii-charts-row">';
+
+    // Dividends bar chart
+    html += '<div class="fii-chart-card">'
+        + '<div class="fii-chart-title">📈 Histórico de Dividendos (R$/cota)</div>'
+        + (divsSort.length > 0
+            ? '<div class="fii-chart-wrap"><canvas id="fii-chart-div-' + sym + '"></canvas></div>'
+              + '<div class="fii-insight-box">Média dos últimos ' + divsSort.length + ' meses: <strong>' + fii_brl(avgDiv) + '/cota</strong>'
+              + (avgDiv > 0 && q.regularMarketPrice ? ' · DY médio mensal: <strong>' + fii_pct(avgDiv/q.regularMarketPrice*100) + '</strong>' : '')
+              + '</div>'
+            : '<div style="color:var(--muted);font-size:0.82rem;padding:1rem;text-align:center">Histórico de dividendos não disponível</div>')
+        + '</div>';
+
+    // Donut chart (portfolio)
+    html += '<div class="fii-chart-card">'
+        + '<div class="fii-chart-title">🏗 Composição do Portfólio</div>';
+
+    if (compData && (compData.imoveis+compData.caixa+compData.cri+compData.fii+compData.outros) > 0) {
+        html += '<div class="fii-chart-wrap"><canvas id="fii-chart-comp-' + sym + '"></canvas></div>'
+            + '<div class="fii-donut-legend">'
+            + (compData.imoveis>0?'<div class="fii-donut-item"><div class="fii-donut-dot" style="background:#3B82F6"></div>Imóveis: ' + fii_pct(compData.imoveis) + '</div>':'')
+            + (compData.caixa>0?'<div class="fii-donut-item"><div class="fii-donut-dot" style="background:#1DB954"></div>Caixa: ' + fii_pct(compData.caixa) + '</div>':'')
+            + (compData.cri>0?'<div class="fii-donut-item"><div class="fii-donut-dot" style="background:#8B5CF6"></div>CRI/Recebíveis: ' + fii_pct(compData.cri) + '</div>':'')
+            + (compData.fii>0?'<div class="fii-donut-item"><div class="fii-donut-dot" style="background:#F59E0B"></div>Outros FIIs: ' + fii_pct(compData.fii) + '</div>':'')
+            + (compData.outros>0?'<div class="fii-donut-item"><div class="fii-donut-dot" style="background:#6b7280"></div>Outros Ativos: ' + fii_pct(compData.outros) + '</div>':'')
+            + '</div>';
+    } else {
+        html += '<div style="color:var(--muted);font-size:0.82rem;padding:1rem;text-align:center">Dados de composição não disponíveis<br><span style="font-size:0.72rem">Brapi plano gratuito pode ter cobertura limitada</span></div>';
+    }
+    html += '</div>';
+
+    html += '</div>'; // end charts row
+
+    // Eficiência e custos
+    html += '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);margin-bottom:0.75rem">⚙ Eficiência e Custos</div>'
+        + '<div class="fii-eficiencia">'
+        + '<div class="fii-ef-card"><div class="fii-ef-lbl">Taxa Adm.</div><div class="fii-ef-val" style="color:#F59E0B">' + (lastRep&&lastRep.adminFeeRate?fii_pct(lastRep.adminFeeRate):(q.adminFeeRate?fii_pct(q.adminFeeRate):'—')) + '</div></div>'
+        + '<div class="fii-ef-card"><div class="fii-ef-lbl">Ret. Patrimonial/mês</div><div class="fii-ef-val" style="color:#1DB954">' + (lastRep&&lastRep.monthlyPatrimonialReturn?fii_pct(lastRep.monthlyPatrimonialReturn):'—') + '</div></div>'
+        + '<div class="fii-ef-card"><div class="fii-ef-lbl">Liquidez Caixa/PL</div><div class="fii-ef-val" style="color:#3B82F6">' + (compData&&compData.caixa?fii_pct(compData.caixa):'—') + '</div></div>'
+        + '</div>';
+
+    document.getElementById('fii-modal-content').innerHTML = html;
+    document.getElementById('fii-modal').classList.add('open');
+
+    // Draw charts after render
+    setTimeout(function() {
+        // Dividends chart
+        if (divsSort.length > 0) {
+            var ctx = document.getElementById('fii-chart-div-' + sym);
+            if (ctx) {
+                if (FII_STATE.charts['div-'+sym]) FII_STATE.charts['div-'+sym].destroy();
+                var labels = divsSort.map(function(d,i){ return fii_date(d.paymentDate||d.relatedTo||('Div '+(i+1))); }).reverse();
+                var vals   = divsSort.map(function(d){ return d.rate||d.value||0; }).reverse();
+                FII_STATE.charts['div-'+sym] = new Chart(ctx, {
+                    type:'bar',
+                    data:{
+                        labels: labels,
+                        datasets:[{
+                            data: vals,
+                            backgroundColor: 'rgba(29,185,84,0.7)',
+                            borderColor: '#1DB954',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        },{
+                            type:'line',
+                            data: vals.map(function(){ return avgDiv; }),
+                            borderColor:'rgba(201,168,76,0.8)',
+                            borderWidth:1.5,
+                            borderDash:[4,4],
+                            pointRadius:0,
+                            fill:false,
+                            label:'Média'
+                        }]
+                    },
+                    options:{
+                        responsive:true, maintainAspectRatio:false,
+                        plugins:{legend:{display:false},tooltip:{backgroundColor:'#1C2638',bodyColor:'#E8EAF0',callbacks:{label:function(c){ return ' R$ '+c.raw.toFixed(4); }}}},
+                        scales:{
+                            x:{ticks:{color:'#7B8DB0',font:{size:9},maxRotation:45},grid:{display:false},border:{display:false}},
+                            y:{ticks:{color:'#7B8DB0',font:{size:10},callback:function(v){return 'R$'+v.toFixed(3);}},grid:{color:'rgba(42,51,71,0.4)'},border:{display:false}}
+                        }
+                    }
+                });
+            }
+        }
+        // Composition donut
+        if (compData && (compData.imoveis+compData.caixa+compData.cri+compData.fii+compData.outros) > 0) {
+            var ctx2 = document.getElementById('fii-chart-comp-' + sym);
+            if (ctx2) {
+                if (FII_STATE.charts['comp-'+sym]) FII_STATE.charts['comp-'+sym].destroy();
+                var dData=[]; var dLabels=[]; var dColors=[];
+                if(compData.imoveis>0){dData.push(compData.imoveis);dLabels.push('Imóveis');dColors.push('#3B82F6');}
+                if(compData.caixa>0){dData.push(compData.caixa);dLabels.push('Caixa');dColors.push('#1DB954');}
+                if(compData.cri>0){dData.push(compData.cri);dLabels.push('CRI');dColors.push('#8B5CF6');}
+                if(compData.fii>0){dData.push(compData.fii);dLabels.push('FIIs');dColors.push('#F59E0B');}
+                if(compData.outros>0){dData.push(compData.outros);dLabels.push('Outros');dColors.push('#6b7280');}
+                FII_STATE.charts['comp-'+sym] = new Chart(ctx2,{
+                    type:'doughnut',
+                    data:{labels:dLabels,datasets:[{data:dData,backgroundColor:dColors,borderColor:'#161E2E',borderWidth:2}]},
+                    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1C2638',bodyColor:'#E8EAF0',callbacks:{label:function(c){return ' '+c.label+': '+c.raw.toFixed(1)+'%';}}}},cutout:'65%'}
+                });
+            }
+        }
+    }, 100);
+}
+
+function fii_closeModal() {
+    document.getElementById('fii-modal').classList.remove('open');
+}
+
+// ── Render grid ───────────────────────────────────────────────────────
+function fii_renderGrid() {
+    var grid = document.getElementById('fii-grid');
+    if (!grid) return;
+
+    var filter = FII_STATE.activeFilter;
+    var filtered = FII_STATE.fiis.filter(function(f) {
+        if (filter === 'todos') return true;
+        if (!f.ok || !f.quote) return filter === 'erro';
+        var seg = fii_segClass(f.quote.sector || f.quote.segment || '');
+        return seg === filter;
+    });
+
+    if (filtered.length === 0) {
+        grid.innerHTML = '<div class="fii-empty"><div style="font-size:2rem;margin-bottom:0.75rem">📭</div><div>Nenhum FII neste filtro</div></div>';
+        return;
+    }
+
+    grid.innerHTML = filtered.map(fii_renderCard).join('');
+    fii_renderAlertas();
+}
+
+// ── Add / Remove FII ─────────────────────────────────────────────────
+async function fii_addFII() {
+    var input = document.getElementById('fii-input');
+    if (!input) return;
+    var sym = input.value.trim().toUpperCase();
+    if (!sym) { toast('Digite um ticker de FII'); return; }
+    if (!sym.endsWith('11')) sym = sym + '11';
+
+    // Check duplicate
+    for (var i=0; i<FII_STATE.fiis.length; i++) { if (FII_STATE.fiis[i].symbol===sym) { toast(sym + ' já está na lista'); return; } }
+
+    input.value = '';
+    toast('Buscando ' + sym + '...');
+    var f = await fii_fetchOne(sym);
+    FII_STATE.fiis.push(f);
+    fii_saveList();
+    fii_renderGrid();
+    if (!f.ok) toast('⚠ Dados de ' + sym + ' não encontrados na Brapi');
+}
+
+function fii_saveList() {
+    var syms = FII_STATE.fiis.map(function(f){ return f.symbol; });
+    localStorage.setItem('fii_list', JSON.stringify(syms));
+}
+
+// ── Main loader ───────────────────────────────────────────────────────
+async function loadFIIPanel(panel) {
+    // Inject CSS once
+    if (!document.getElementById('fii-style')) {
+        var s = document.createElement('style');
+        s.id = 'fii-style';
+        s.textContent = FII_CSS;
+        document.head.appendChild(s);
+    }
+
+    // Load saved alvos
+    try { FII_STATE.alvos = JSON.parse(localStorage.getItem('fii_alvos') || '{}'); } catch(e) {}
+
+    // Load saved list or defaults
+    var savedList = [];
+    try { savedList = JSON.parse(localStorage.getItem('fii_list') || '[]'); } catch(e) {}
+    var toLoad = savedList.length > 0 ? savedList : FII_DEFAULT;
+
+    // Render skeleton
+    panel.innerHTML = fii_buildShell(toLoad.length);
+
+    // Fetch all in parallel
+    var promises = toLoad.map(fii_fetchOne);
+    FII_STATE.fiis = await Promise.all(promises);
+
+    // Update live badge
+    var ok = FII_STATE.fiis.filter(function(f){ return f.ok; }).length;
+    var dotEl = document.getElementById('fii-live-dot');
+    var txtEl = document.getElementById('fii-live-txt');
+    if (dotEl) dotEl.className = 'fii-live-dot' + (ok===0?' err':'');
+    if (txtEl) txtEl.textContent = ok + '/' + FII_STATE.fiis.length + ' ativos · ' + new Date().toLocaleTimeString('pt-BR');
+
+    fii_renderGrid();
+    setStatus('live', 'FIIs carregados · Brapi · ' + new Date().toLocaleTimeString('pt-BR'));
+}
+
+function fii_buildShell(n) {
+    var skeletons = '';
+    for (var i=0; i<Math.min(n,8); i++) {
+        skeletons += '<div class="fii-skeleton"><div class="fii-skel-line" style="height:20px;width:80px;margin-bottom:12px"></div><div class="fii-skel-line" style="height:32px;width:120px;margin-bottom:8px"></div><div class="fii-skel-line" style="height:14px;width:100%"></div><div class="fii-skel-line" style="height:14px;width:80%"></div></div>';
+    }
+    return '<div class="fii-wrap">'
+        + '<div class="fii-toolbar">'
+        + '<div><div class="fii-toolbar-title">Análise de FIIs</div><div class="fii-toolbar-sub">Fundos de Investimento Imobiliário · Dados: Brapi / B3</div></div>'
+        + '<div class="fii-live-badge"><div class="fii-live-dot loading" id="fii-live-dot"></div><span id="fii-live-txt">Carregando...</span></div>'
+        + '</div>'
+        + '<div class="fii-alerts" id="fii-alerts"></div>'
+        + '<div class="fii-controls">'
+        + '<input class="fii-search-in" id="fii-input" type="text" placeholder="Ex: MXRF, XPML..." />'
+        + '<button class="fii-add-btn" onclick="fii_addFII()">+ Adicionar</button>'
+        + '<button class="fii-filter-btn active" id="fbt-todos" onclick="fii_setFilter(\'todos\')">Todos</button>'
+        + '<button class="fii-filter-btn" id="fbt-tijolo" onclick="fii_setFilter(\'tijolo\')">🧱 Tijolo</button>'
+        + '<button class="fii-filter-btn" id="fbt-papel" onclick="fii_setFilter(\'papel\')">📄 Papel</button>'
+        + '<button class="fii-filter-btn" id="fbt-fof" onclick="fii_setFilter(\'fof\')">🏦 FoF</button>'
+        + '<button class="fii-filter-btn" id="fbt-hibrido" onclick="fii_setFilter(\'hibrido\')">⚡ Híbrido</button>'
+        + '</div>'
+        + '<div class="fii-loading-grid" id="fii-grid">' + skeletons + '</div>'
+        + '</div>';
+}
+
+function fii_setFilter(f) {
+    FII_STATE.activeFilter = f;
+    ['todos','tijolo','papel','fof','hibrido'].forEach(function(n){
+        var el=document.getElementById('fbt-'+n);
+        if(el) el.classList.toggle('active', n===f);
+    });
+    fii_renderGrid();
+}
+
+// ── Entry point ───────────────────────────────────────────────────────
+function showFIIPanel() {
+    var panel = document.getElementById('main-panel');
+    loadFIIPanel(panel);
 }
 
 
