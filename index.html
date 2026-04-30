@@ -1098,16 +1098,365 @@ function rf2_attrScore(tipoTitulo, taxaTitulo, selicAtual, selicFocus) {
 
 // ── Global RF2 state ─────────────────────────────────────────────────
 var RF2 = {
-    selicAtual: null,
-    cdiAtual: null,
-    selicFocus: null,
-    ipcaFocus: null,
-    camFocus: null,
-    pibFocus: null,
-    selicFocusNxt: null,
-    ipcaFocusNxt: null,
+    selicAtual: null,    cdiAtual: null,      selicData: null,
+    selicFocus: null,    selicFocusNxt: null,
+    ipcaFocus: null,     ipcaFocusNxt: null,
+    camFocus: null,      camFocusNxt: null,
+    pibFocus: null,      pibFocusNxt: null,
+    focusSELIC: {},      // {2025:X, 2026:X, 2027:X, 2028:X, 2029:X}
+    focusIPCA: {},       // idem
+    diData: null,        // DI Futuro da B3
     loaded: false
 };
+
+
+// ═══════════════════════════════════════════════════════════════════
+// RF2 UPGRADE — Multi-anual Focus + DI Futuro + Prazo Dinâmico
+// ═══════════════════════════════════════════════════════════════════
+
+// ── 1. Fetch Focus para múltiplos anos ──────────────────────────────
+async function rf2_fetchFocusMulti(indicador, anos) {
+    // anos = [2025,2026,2027,2028,2029]
+    var results = {};
+    var promises = anos.map(function(ano) {
+        return rf2_fetchFocus(indicador, String(ano))
+            .then(function(r) { results[ano] = r ? r.mediana : null; })
+            .catch(function() { results[ano] = null; });
+    });
+    await Promise.all(promises);
+    return results;
+}
+
+// ── 2. Média Geométrica das Selics projetadas ─────────────────────
+// Usada para comparar com títulos de longo prazo
+// Anos: lista de anos no período, selic por ano do Focus
+function rf2_mediaGeometrica(taxasPorAno) {
+    // taxasPorAno = {2025:10.5, 2026:10.0, 2027:9.5, ...}
+    var anos = Object.keys(taxasPorAno).sort();
+    var produto = 1;
+    var count = 0;
+    for (var i = 0; i < anos.length; i++) {
+        var t = taxasPorAno[anos[i]];
+        if (t != null && !isNaN(t)) {
+            produto *= (1 + t / 100);
+            count++;
+        }
+    }
+    if (count === 0) return null;
+    // Média geométrica anual
+    return (Math.pow(produto, 1 / count) - 1) * 100;
+}
+
+// ── 3. Anos do período dado prazo em meses ───────────────────────
+function rf2_anosNoPeriodo(prazoMeses) {
+    var anoAtual = new Date().getFullYear();
+    var anos = Math.ceil(prazoMeses / 12);
+    var lista = [];
+    for (var i = 0; i < Math.max(anos, 1); i++) {
+        lista.push(anoAtual + i);
+    }
+    return lista;
+}
+
+// ── 4. Alíquota IR pelo prazo ─────────────────────────────────────
+function rf2_aliquotaIR(prazoMeses) {
+    var dias = prazoMeses * 30.4;
+    if (dias <= 180)  return 22.5;
+    if (dias <= 360)  return 20.0;
+    if (dias <= 720)  return 17.5;
+    return 15.0;
+}
+
+// ── 5. Busca DI Futuro via Bacen SGS ─────────────────────────────
+// SGS série 13521 = Taxa Swap DI Pré 360d (proxy curva)
+// SGS série 13600 = Taxa Swap DI Pré 720d
+// SGS série 13601 = Taxa Swap DI Pré 1080d
+var DI_SERIES = {
+    360:  13521,   // ~1 ano
+    720:  13600,   // ~2 anos
+    1080: 13601    // ~3 anos
+};
+
+async function rf2_fetchDIFuturo() {
+    var di = {};
+    var prazoLabels = { 360: '1 ano', 720: '2 anos', 1080: '3 anos' };
+    var promises = Object.keys(DI_SERIES).map(async function(prazo) {
+        try {
+            var serie = DI_SERIES[prazo];
+            var url = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.' + serie + '/dados/ultimos/3?formato=json';
+            var r = await fetch(url);
+            if (!r.ok) { di[prazo] = null; return; }
+            var d = await r.json();
+            if (d && d.length > 0) {
+                di[prazo] = {
+                    taxa: parseFloat(d[d.length-1].valor),
+                    data: d[d.length-1].data,
+                    label: prazoLabels[prazo]
+                };
+            } else { di[prazo] = null; }
+        } catch(e) { di[prazo] = null; }
+    });
+    await Promise.all(promises);
+    return di;
+}
+
+// ── 6. Custo de oportunidade para o prazo ─────────────────────────
+// Retorna {taxa, fonte, label} — melhor estimativa da taxa de mercado
+function rf2_custoOportunidade(prazoMeses, diData, focusMulti) {
+    var dias = prazoMeses * 30.4;
+
+    // 1. Tenta DI Futuro (mais preciso — preço de mercado)
+    if (diData) {
+        if (dias <= 450 && diData[360] && diData[360].taxa) {
+            return { taxa: diData[360].taxa, fonte: 'DI Futuro 1A (B3)', label: 'Taxa Swap DI Pré 360d' };
+        }
+        if (dias <= 900 && diData[720] && diData[720].taxa) {
+            return { taxa: diData[720].taxa, fonte: 'DI Futuro 2A (B3)', label: 'Taxa Swap DI Pré 720d' };
+        }
+        if (diData[1080] && diData[1080].taxa) {
+            return { taxa: diData[1080].taxa, fonte: 'DI Futuro 3A (B3)', label: 'Taxa Swap DI Pré 1080d' };
+        }
+    }
+
+    // 2. Fallback: Média geométrica Focus
+    if (focusMulti && Object.keys(focusMulti).length > 0) {
+        var mg = rf2_mediaGeometrica(focusMulti);
+        if (mg) return { taxa: mg, fonte: 'Média Geométrica Focus', label: 'Selic média projetada no período' };
+    }
+
+    // 3. Fallback: Selic atual
+    return { taxa: RF2.selicAtual || 10.75, fonte: 'Selic atual (SGS)', label: 'Selic Meta atual' };
+}
+
+// ── 7. Score de atratividade multi-anual (SUBSTITUIÇÃO) ──────────
+function rf2_attrScoreMulti(tipoTitulo, taxaTitulo, prazoMeses, diData, focusMulti) {
+    var cdi = RF2.cdiAtual || (RF2.selicAtual ? RF2.selicAtual - 0.10 : 10.65);
+    var custo = rf2_custoOportunidade(prazoMeses, diData, focusMulti);
+    var taxaRef = custo.taxa;
+
+    // Converter taxa do título para base comparável (% a.a.)
+    var taxaAbs = taxaTitulo;
+    if (tipoTitulo === 'posfixado') {
+        taxaAbs = (taxaTitulo / 100) * cdi;
+    } else if (tipoTitulo === 'ipca') {
+        var ipcaMed = rf2_mediaGeometrica(RF2.focusIPCA || {}) || RF2.ipcaFocus || 4.5;
+        taxaAbs = ipcaMed + taxaTitulo; // IPCA médio + spread
+    }
+
+    // Spread vs custo de oportunidade
+    var spread = taxaAbs - taxaRef;
+
+    var score;
+    if (spread > 3.0)       score = 95;
+    else if (spread > 2.0)  score = 85;
+    else if (spread > 1.0)  score = 75;
+    else if (spread > 0.5)  score = 65;
+    else if (spread > 0.0)  score = 55;
+    else if (spread > -0.5) score = 45;
+    else if (spread > -1.5) score = 32;
+    else                    score = 18;
+
+    // Bônus para IPCA+ (sempre tem proteção real)
+    if (tipoTitulo === 'ipca' && taxaTitulo > 5) score = Math.min(score + 8, 100);
+
+    return {
+        score: Math.round(score),
+        spread: spread,
+        taxaAbs: taxaAbs,
+        taxaRef: taxaRef,
+        custo: custo
+    };
+}
+
+// ── 8. Render da calculadora COM PRAZO ───────────────────────────
+function rf2_renderCalcV2() {
+    var cdiBase = parseFloat(document.getElementById('rf2-cdi-base').value);
+    if (isNaN(cdiBase) || cdiBase <= 0) return;
+    var pctLCI = parseFloat(document.getElementById('rf2-pct-lci').value);
+    var pctCDB = parseFloat(document.getElementById('rf2-pct-cdb').value);
+    var prazoMeses = parseInt(document.getElementById('rf2-prazo').value) || 24;
+    if (isNaN(pctLCI) || isNaN(pctCDB)) return;
+
+    var aliq = rf2_aliquotaIR(prazoMeses);
+    var taxaLCI = (pctLCI / 100) * cdiBase;
+    var taxaCDB = (pctCDB / 100) * cdiBase;
+    var taxaCDB_liq = taxaCDB * (1 - aliq / 100);
+    var taxaLCI_liq = taxaLCI; // isento
+    var diff = taxaCDB_liq - taxaLCI_liq;
+    // CDB equiv = taxa que zerada o spread
+    var equiv = cdiBase > 0 ? (taxaLCI / (1 - aliq / 100) / cdiBase * 100) : 0;
+
+    var resultados = rf2_calcEquivalencia(cdiBase, pctLCI, pctCDB);
+
+    var vencedorCls = Math.abs(diff) < 0.15 ? 'tie' : diff > 0 ? 'cdb-wins' : 'lci-wins';
+    var vencedorTxt = Math.abs(diff) < 0.15
+        ? 'Equivalentes para este prazo'
+        : diff > 0
+        ? 'CDB ' + pctCDB.toFixed(0) + '% CDI vence após IR de ' + aliq + '%'
+        : 'LCI/LCA ' + pctLCI.toFixed(0) + '% CDI vence pela isenção fiscal';
+
+    var html = '<div class="calc-result-title">Resultado · Prazo: ' + prazoMeses + ' meses</div>';
+
+    // Summary
+    html += '<div class="calc-res-grid">'
+        + '<div class="calc-res-item"><div class="calc-res-lbl">CDI base</div><div class="calc-res-val" style="color:var(--gold)">' + cdiBase.toFixed(2) + '%</div><div class="calc-res-sub">taxa de referência</div></div>'
+        + '<div class="calc-res-item"><div class="calc-res-lbl">LCI ' + pctLCI.toFixed(0) + '% CDI</div><div class="calc-res-val" style="color:#3B82F6">' + taxaLCI.toFixed(2) + '%</div><div class="calc-res-sub">isento · líquido</div></div>'
+        + '<div class="calc-res-item"><div class="calc-res-lbl">CDB ' + pctCDB.toFixed(0) + '% CDI</div><div class="calc-res-val" style="color:var(--gold)">' + taxaCDB_liq.toFixed(2) + '%</div><div class="calc-res-sub">líquido IR ' + aliq + '% (' + prazoMeses + 'm)</div></div>'
+        + '<div class="calc-res-item"><div class="calc-res-lbl">CDB equiv. à LCI</div><div class="calc-res-val" style="color:#1DB954">' + equiv.toFixed(1) + '% CDI</div><div class="calc-res-sub">para empatar no prazo</div></div>'
+        + '</div>';
+
+    // IR table completa
+    html += '<div style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin:0.85rem 0 0.5rem">Comparativo por prazo (IR regressivo)</div>'
+        + '<table class="ir-table"><thead><tr>'
+        + '<th style="text-align:left">Prazo</th><th>IR</th>'
+        + '<th>CDB ' + pctCDB.toFixed(0) + '% liq.</th>'
+        + '<th>LCI ' + pctLCI.toFixed(0) + '% iso.</th>'
+        + '<th>CDB equiv.</th><th>Vencedor</th>'
+        + '</tr></thead><tbody>';
+
+    for (var i = 0; i < resultados.length; i++) {
+        var r = resultados[i];
+        var isSel = (i === 0 && prazoMeses <= 6) || (i === 1 && prazoMeses <= 12) || (i === 2 && prazoMeses <= 24) || (i === 3 && prazoMeses > 24);
+        var rowSty = isSel ? ' style="background:rgba(201,168,76,0.08)"' : '';
+        var cdbCls = r.vencedor==='cdb' ? ' class="winner"' : '';
+        var lciCls = r.vencedor==='lci' ? ' class="winner"' : '';
+        var selTag = isSel ? ' <span style="color:var(--gold);font-size:0.65rem">◀ seu prazo</span>' : '';
+        var vTxt = r.vencedor==='cdb' ? '<span style="color:var(--gold)">CDB ✓</span>' : r.vencedor==='lci' ? '<span style="color:#3B82F6">LCI ✓</span>' : '<span style="color:#1DB954">Empate</span>';
+        html += '<tr' + rowSty + '><td>' + r.label + selTag + '</td><td style="color:var(--muted)">' + r.ir.toFixed(1) + '%</td>'
+            + '<td' + cdbCls + '>' + r.taxaCDB_liq.toFixed(2) + '%</td>'
+            + '<td' + lciCls + '>' + r.taxaLCI_liq.toFixed(2) + '%</td>'
+            + '<td style="color:#1DB954">' + r.equiv_cdb_pct.toFixed(1) + '% CDI</td>'
+            + '<td>' + vTxt + '</td></tr>';
+    }
+    html += '</tbody></table>';
+    html += '<div class="calc-verdict ' + vencedorCls + '">' + vencedorTxt + '</div>';
+
+    var el = document.getElementById('rf2-calc-result');
+    if (el) el.innerHTML = html;
+}
+
+// ── 9. Render atratividade multi-anual ───────────────────────────
+function rf2_renderAttrV2() {
+    var tipo  = document.getElementById('rf2-attr-tipo').value;
+    var taxa  = parseFloat(document.getElementById('rf2-attr-taxa').value);
+    var prazoMeses = parseInt(document.getElementById('rf2-attr-prazo').value) || 24;
+    if (isNaN(taxa)) return;
+
+    var unitEl = document.getElementById('rf2-attr-unit');
+    var units = { posfixado: '% do CDI', prefixado: '% a.a.', ipca: '% + IPCA a.a.' };
+    if (unitEl) unitEl.textContent = units[tipo] || '% a.a.';
+
+    // Get multi-year focus data for the period
+    var anos = rf2_anosNoPeriodo(prazoMeses);
+    var focusMulti = {};
+    anos.forEach(function(a) {
+        var v = RF2.focusSELIC && RF2.focusSELIC[a];
+        if (v != null) focusMulti[a] = v;
+    });
+
+    var diData = RF2.diData || null;
+    var result = rf2_attrScoreMulti(tipo, taxa, prazoMeses, diData, focusMulti);
+
+    var score = result.score;
+    var needle = Math.min(Math.max(score, 2), 98);
+    var spread = result.spread;
+
+    var scoreLbl, scoreCls, attrTag;
+    if (score >= 75) {
+        scoreLbl = '🟢 Atratividade Alta';
+        scoreCls = 'color:#1DB954';
+        attrTag = '<span style="background:rgba(29,185,84,0.15);color:#1DB954;padding:0.2rem 0.7rem;border-radius:12px;font-size:0.75rem;font-weight:600">ATRATIVO</span>';
+    } else if (score >= 50) {
+        scoreLbl = '🟡 Atratividade Moderada';
+        scoreCls = 'color:#F59E0B';
+        attrTag = '<span style="background:rgba(245,158,11,0.15);color:#F59E0B;padding:0.2rem 0.7rem;border-radius:12px;font-size:0.75rem;font-weight:600">MODERADO</span>';
+    } else {
+        scoreLbl = '🔴 Pouco Atrativo';
+        scoreCls = 'color:#E74C3C';
+        attrTag = '<span style="background:rgba(231,76,60,0.15);color:#E74C3C;padding:0.2rem 0.7rem;border-radius:12px;font-size:0.75rem;font-weight:600">POUCO ATRATIVO</span>';
+    }
+
+    var spreadSty = spread >= 0 ? 'color:#1DB954' : 'color:#E74C3C';
+    var spreadStr = (spread >= 0 ? '+' : '') + spread.toFixed(2) + ' p.p.';
+
+    // Anos cobertos
+    var anosStr = anos.join(', ');
+    var focusStr = Object.keys(focusMulti).length > 0
+        ? 'Focus: ' + Object.keys(focusMulti).sort().map(function(a){ return a + '=' + focusMulti[a].toFixed(1) + '%'; }).join(', ')
+        : 'Dados Focus não disponíveis para o período';
+
+    // DI Futuro info
+    var diStr = '';
+    if (result.custo.fonte.indexOf('DI Futuro') >= 0) {
+        diStr = '<div style="font-size:0.72rem;color:#3B82F6;margin-top:4px">📈 ' + result.custo.label + ': ' + result.custo.taxa.toFixed(2) + '% a.a. (preço de mercado B3)</div>';
+    }
+
+    // Context
+    var ctx = '';
+    var ipcaMed = rf2_mediaGeometrica(RF2.focusIPCA || {}) || RF2.ipcaFocus || 4.5;
+    if (tipo === 'posfixado') {
+        var selicMg = rf2_mediaGeometrica(focusMulti);
+        ctx = 'Para os anos ' + anosStr + ', o Focus projeta Selic média de <strong>' + (selicMg ? selicMg.toFixed(2) + '%' : '—') + '</strong>. '
+            + (spread > 0 ? 'Seu título (CDI ' + taxa.toFixed(0) + '%) rende acima do custo de oportunidade.' : 'Avalie se a taxa justifica o prazo.');
+    } else if (tipo === 'prefixado') {
+        ctx = 'Custo de oportunidade (' + result.custo.fonte + '): <strong>' + result.custo.taxa.toFixed(2) + '%</strong>. '
+            + 'Sua taxa prefixada de <strong>' + taxa.toFixed(2) + '%</strong> oferece spread de <strong style="' + spreadSty + '">' + spreadStr + '</strong> sobre o mercado. '
+            + (spread > 1 ? 'Excelente oportunidade de travar a taxa!' : spread > 0 ? 'Levemente acima do mercado — aceitável.' : 'Abaixo do custo de oportunidade — reavalie.');
+    } else { // ipca+
+        ctx = 'IPCA médio projetado para o período: <strong>' + ipcaMed.toFixed(2) + '%</strong>. '
+            + 'Seu IPCA+ ' + taxa.toFixed(2) + '% oferece retorno real esperado de <strong>' + taxa.toFixed(2) + '%</strong> acima da inflação. '
+            + (taxa > 6 ? 'Historicamente acima da média — muito atrativo para longo prazo.' : taxa > 4 ? 'Taxa razoável para proteção inflacionária.' : 'Spread baixo — busque oportunidades com spread maior.');
+    }
+
+    var html = '';
+
+    // Taxa vs Custo de Oportunidade — visual comparison
+    html += '<div style="background:var(--dark2);border-radius:10px;padding:1rem;margin-bottom:1rem;border:0.5px solid var(--border)">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem">'
+        + '<div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Taxa do Título vs Custo de Oportunidade</div>'
+        + attrTag + '</div>'
+
+        + '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:0.75rem">'
+
+        // Taxa do título
+        + '<div style="background:var(--dark3);border-radius:10px;padding:0.85rem;text-align:center;border:0.5px solid rgba(201,168,76,0.3)">'
+        + '<div style="font-size:0.68rem;color:var(--muted);margin-bottom:4px">Taxa do Título</div>'
+        + '<div style="font-family:\'Playfair Display\',serif;font-size:1.5rem;color:var(--gold)">' + (tipo==='posfixado' ? taxa.toFixed(0)+'% CDI' : taxa.toFixed(2)+'%') + '</div>'
+        + '<div style="font-size:0.7rem;color:var(--muted2);margin-top:3px">' + (tipo==='ipca'?'IPCA + spread':tipo==='prefixado'?'taxa fixa a.a.':'% do CDI') + '</div>'
+        + '</div>'
+
+        // Spread
+        + '<div style="text-align:center">'
+        + '<div style="font-size:1rem;font-weight:600;' + spreadSty + '">' + spreadStr + '</div>'
+        + '<div style="font-size:0.65rem;color:var(--muted2)">spread</div>'
+        + '</div>'
+
+        // Custo de oportunidade
+        + '<div style="background:var(--dark3);border-radius:10px;padding:0.85rem;text-align:center;border:0.5px solid rgba(59,130,246,0.3)">'
+        + '<div style="font-size:0.68rem;color:var(--muted);margin-bottom:4px">Custo de Oportunidade</div>'
+        + '<div style="font-family:\'Playfair Display\',serif;font-size:1.5rem;color:#3B82F6">' + result.custo.taxa.toFixed(2) + '%</div>'
+        + '<div style="font-size:0.7rem;color:var(--muted2);margin-top:3px">' + result.custo.fonte + '</div>'
+        + '</div>'
+
+        + '</div>'  // end comparison grid
+        + diStr
+        + '<div style="font-size:0.7rem;color:var(--muted2)">' + focusStr + '</div>'
+        + '</div>';
+
+    // Meter
+    html += '<div class="attr2-row">'
+        + '<div class="attr2-label">Atratividade</div>'
+        + '<div class="attr2-meter"><div class="attr2-needle" style="left:' + needle + '%"></div></div>'
+        + '<div class="attr2-score-lbl" style="' + scoreCls + '">' + scoreLbl + '</div>'
+        + '</div>'
+        + '<div class="attr2-legend"><span>Pouco atrativo</span><span>Moderado</span><span>Muito atrativo</span></div>'
+        + '<div class="attr2-context">' + ctx + '</div>';
+
+    var el = document.getElementById('rf2-attr-result');
+    if (el) el.innerHTML = html;
+}
+
+
 
 // ── Render calculadora result ────────────────────────────────────────
 function rf2_renderCalc() {
@@ -1330,19 +1679,22 @@ function rf2_render(panel) {
         + '<div class="calc-panel isento">'
         + '<div class="calc-panel-title" style="color:#3B82F6">🔵 Papel Isento (LCI/LCA)</div>'
         + '<div class="calc-field"><label class="calc-label">CDI base (taxa atual)</label>'
-        + '<div class="calc-input-row"><input class="calc-in" id="rf2-cdi-base" type="number" value="' + cdiBase.toFixed(2) + '" step="0.01" oninput="rf2_renderCalc()" /><span class="calc-unit">% a.a.</span></div>'
+        + '<div class="calc-input-row"><input class="calc-in" id="rf2-cdi-base" type="number" value="' + cdiBase.toFixed(2) + '" step="0.01" oninput="rf2_renderCalcV2()" /><span class="calc-unit">% a.a.</span></div>'
         + '<div style="font-size:0.68rem;color:var(--muted2);margin-top:3px">CDI ≈ Selic − 0,10 pp</div></div>'
         + '<div class="calc-field"><label class="calc-label">Taxa da LCI/LCA</label>'
-        + '<div class="calc-input-row"><input class="calc-in" id="rf2-pct-lci" type="number" value="90" step="0.5" oninput="rf2_renderCalc()" /><span class="calc-unit">% do CDI</span></div></div>'
+        + '<div class="calc-input-row"><input class="calc-in" id="rf2-pct-lci" type="number" value="90" step="0.5" oninput="rf2_renderCalcV2()" /><span class="calc-unit">% do CDI</span></div></div>'
+        + '<div class="calc-field"><label class="calc-label">⏱ Prazo do investimento</label>'
+        + '<div class="calc-input-row"><input class="calc-in" id="rf2-prazo" type="number" value="24" min="1" max="120" step="1" oninput="rf2_renderCalcV2()" /><span class="calc-unit">meses</span></div>'
+        + '<div style="font-size:0.68rem;color:var(--muted2);margin-top:3px">Define alíquota IR e base de comparação Focus</div></div>'
         + '</div>'
 
         // Painel B — Tributado
         + '<div class="calc-panel tributado">'
         + '<div class="calc-panel-title" style="color:var(--gold)">🟡 Papel Tributado (CDB/LC)</div>'
         + '<div class="calc-field"><label class="calc-label">Taxa do CDB</label>'
-        + '<div class="calc-input-row"><input class="calc-in" id="rf2-pct-cdb" type="number" value="110" step="0.5" oninput="rf2_renderCalc()" /><span class="calc-unit">% do CDI</span></div></div>'
+        + '<div class="calc-input-row"><input class="calc-in" id="rf2-pct-cdb" type="number" value="110" step="0.5" oninput="rf2_renderCalcV2()" /><span class="calc-unit">% do CDI</span></div></div>'
         + '<div class="calc-field"><label class="calc-label">Tipo do papel tributado</label>'
-        + '<select class="calc-select" id="rf2-tipo-cdb" onchange="rf2_renderCalc()">'
+        + '<select class="calc-select" id="rf2-tipo-cdb" onchange="rf2_renderCalcV2()">'
         + '<option value="cdb">CDB</option>'
         + '<option value="lc">LC (Letra de Câmbio)</option>'
         + '<option value="cri">CRI/CRA (Isento)</option>'
@@ -1361,14 +1713,18 @@ function rf2_render(panel) {
         + '<div class="attr2-wrap">'
         + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:1rem">'
         + '<div class="calc-field"><label class="calc-label">Tipo de título</label>'
-        + '<select class="calc-select calc-in-wide" id="rf2-attr-tipo" onchange="rf2_renderAttr()">'
+        + '<select class="calc-select calc-in-wide" id="rf2-attr-tipo" onchange="rf2_renderAttrV2()">'
         + '<option value="posfixado">Pós-fixado (% CDI)</option>'
         + '<option value="prefixado">Prefixado (taxa fixa)</option>'
         + '<option value="ipca">IPCA+ (spread + inflação)</option>'
         + '</select></div>'
         + '<div class="calc-field"><label class="calc-label">Taxa do título</label>'
-        + '<div class="calc-input-row"><input class="calc-in" id="rf2-attr-taxa" type="number" value="' + cdiBase.toFixed(2) + '" step="0.25" oninput="rf2_renderAttr()" />'
+        + '<div class="calc-input-row"><input class="calc-in" id="rf2-attr-taxa" type="number" value="' + cdiBase.toFixed(2) + '" step="0.25" oninput="rf2_renderAttrV2()" />'
         + '<span class="calc-unit" id="rf2-attr-unit">% a.a.</span></div></div>'
+        + '<div class="calc-field"><label class="calc-label">⏱ Prazo do título (meses)</label>'
+        + '<div class="calc-input-row"><input class="calc-in" id="rf2-attr-prazo" type="number" value="24" min="1" max="120" step="1" oninput="rf2_renderAttrV2()" />'
+        + '<span class="calc-unit">meses</span></div>'
+        + '<div style="font-size:0.68rem;color:var(--muted2);margin-top:3px">Ex: 24=2 anos, 48=4 anos. Usa DI Futuro ou média Focus para o período.</div></div>'
         + '</div>'
         + '<div id="rf2-attr-result"></div>'
         + '</div></div>';
@@ -1384,8 +1740,8 @@ function rf2_render(panel) {
 
     // Init calculators after render
     setTimeout(function() {
-        rf2_renderCalc();
-        rf2_renderAttr();
+        rf2_renderCalcV2();
+        rf2_renderAttrV2();
     }, 80);
 }
 
@@ -1408,21 +1764,39 @@ async function loadRF2(panel) {
     var curAno = new Date().getFullYear().toString();
     var nxtAno = (new Date().getFullYear() + 1).toString();
 
+    // ── Fetch base rates + Focus multi-year + DI Futuro ──
+    var anosMulti = [curAno, nxtAno,
+        String(parseInt(curAno)+2),
+        String(parseInt(curAno)+3),
+        String(parseInt(curAno)+4)];
+
     var tasks = [
-        rf2_fetchSGS(1178),
-        rf2_fetchSGS(12),
-        rf2_fetchFocus('Selic',      curAno),
-        rf2_fetchFocus('Selic',      nxtAno),
-        rf2_fetchFocus('IPCA',       curAno),
-        rf2_fetchFocus('IPCA',       nxtAno),
-        rf2_fetchFocus('Câmbio',     curAno),
-        rf2_fetchFocus('Câmbio',     nxtAno),
-        rf2_fetchFocus('PIB Total',  curAno),
-        rf2_fetchFocus('PIB Total',  nxtAno)
+        rf2_fetchSGS(1178),   // 0 Selic
+        rf2_fetchSGS(12),     // 1 CDI
+        // Focus cur/nxt para cards principais
+        rf2_fetchFocus('Selic',     curAno),   // 2
+        rf2_fetchFocus('Selic',     nxtAno),   // 3
+        rf2_fetchFocus('IPCA',      curAno),   // 4
+        rf2_fetchFocus('IPCA',      nxtAno),   // 5
+        rf2_fetchFocus('Câmbio',    curAno),   // 6
+        rf2_fetchFocus('Câmbio',    nxtAno),   // 7
+        rf2_fetchFocus('PIB Total', curAno),   // 8
+        rf2_fetchFocus('PIB Total', nxtAno),   // 9
+        // Focus multi-anual Selic (para média geométrica)
+        rf2_fetchFocus('Selic', anosMulti[2]), // 10
+        rf2_fetchFocus('Selic', anosMulti[3]), // 11
+        rf2_fetchFocus('Selic', anosMulti[4]), // 12
+        // Focus multi-anual IPCA
+        rf2_fetchFocus('IPCA',  anosMulti[2]), // 13
+        rf2_fetchFocus('IPCA',  anosMulti[3]), // 14
+        rf2_fetchFocus('IPCA',  anosMulti[4]), // 15
+        // DI Futuro (Swaps Bacen)
+        rf2_fetchDIFuturo()                    // 16
     ];
 
     var results = await Promise.allSettled(tasks);
     var get = function(i) { return results[i].status === 'fulfilled' ? results[i].value : null; };
+    var getMed = function(i) { var v=get(i); return v ? v.mediana : null; };
 
     var selicSGS = get(0);
     var cdiSGS   = get(1);
@@ -1430,15 +1804,27 @@ async function loadRF2(panel) {
     RF2.selicAtual     = selicSGS ? selicSGS.valor : null;
     RF2.selicData      = selicSGS ? selicSGS.data  : null;
     RF2.cdiAtual       = cdiSGS   ? cdiSGS.valor   : (RF2.selicAtual ? +(RF2.selicAtual - 0.10).toFixed(4) : null);
-    RF2.selicFocus     = get(2)  ? get(2).mediana  : null;
-    RF2.selicFocusNxt  = get(3)  ? get(3).mediana  : null;
-    RF2.ipcaFocus      = get(4)  ? get(4).mediana  : null;
-    RF2.ipcaFocusNxt   = get(5)  ? get(5).mediana  : null;
-    RF2.camFocus       = get(6)  ? get(6).mediana  : null;
-    RF2.camFocusNxt    = get(7)  ? get(7).mediana  : null;
-    RF2.pibFocus       = get(8)  ? get(8).mediana  : null;
-    RF2.pibFocusNxt    = get(9)  ? get(9).mediana  : null;
-    RF2.loaded         = true;
+    RF2.selicFocus     = getMed(2);
+    RF2.selicFocusNxt  = getMed(3);
+    RF2.ipcaFocus      = getMed(4);
+    RF2.ipcaFocusNxt   = getMed(5);
+    RF2.camFocus       = getMed(6);
+    RF2.camFocusNxt    = getMed(7);
+    RF2.pibFocus       = getMed(8);
+    RF2.pibFocusNxt    = getMed(9);
+    RF2.diData         = get(16);
+
+    // Multi-year Focus maps
+    RF2.focusSELIC = {};
+    RF2.focusIPCA  = {};
+    anosMulti.forEach(function(a, i) {
+        var selIdx = [2,3,10,11,12][i];
+        var ipcIdx = [4,5,13,14,15][i];
+        if (getMed(selIdx) != null) RF2.focusSELIC[a] = getMed(selIdx);
+        if (getMed(ipcIdx) != null) RF2.focusIPCA[a]  = getMed(ipcIdx);
+    });
+
+    RF2.loaded = true;
 
     rf2_render(panel);
 
