@@ -14,13 +14,13 @@
   --text:#E8EAF0;--muted:#7B8DB0;--muted2:#5A6A88;
 }
 body{font-family:'DM Sans',system-ui,sans-serif;background:var(--dark);color:var(--text);min-height:100vh;overflow-x:hidden}
-h1,h2,h3{font-family:'Playfair Display',serif}
+h1,h2,h3{font-family:Playfair Display,serif}
 .page{display:none}
 .page.active{display:block}
 
 /* NAV */
 nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 2rem;height:60px;background:rgba(8,12,22,0.96);border-bottom:0.5px solid var(--border);backdrop-filter:blur(12px)}
-.logo{display:flex;align-items:center;gap:10px;font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--gold);cursor:pointer;border:none;background:none;font-family:'Playfair Display',serif}
+.logo{display:flex;align-items:center;gap:10px;font-family:Playfair Display,serif;font-size:1.1rem;color:var(--gold);cursor:pointer;border:none;background:none;font-family:Playfair Display,serif}
 .nav-links{display:flex;gap:4px}
 .nav-btn{padding:0.4rem 1rem;font-size:0.85rem;color:var(--muted);cursor:pointer;border-radius:6px;border:none;background:none;font-family:'DM Sans',sans-serif;transition:color 0.2s}
 .nav-btn:hover{color:var(--gold)}
@@ -47,7 +47,87 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 .hero h1{font-size:clamp(2rem,5vw,3.8rem);line-height:1.12;max-width:820px;margin:0 auto 1.5rem;color:#F3F4F8}
 .hero h1 em{color:var(--gold);font-style:normal}
-.hero-sub{font-size:1rem;color:var(--muted);max-width:580px;margin:0 auto 2.5rem;line-height:1.75;font-weight:300}
+.hero-sub{font-size:1rem;color:var(--muted);max-width:580px;margin:0 auto 1.5rem;line-height:1.75;font-weight:300}
+/* ─── HOME ASSET SELECTOR ─── */
+.home-asset-selector {
+  max-width:860px; margin:2rem auto 0; padding:0 1rem;
+}
+.home-search-wrap {
+  background:rgba(255,255,255,0.04);
+  border:0.5px solid var(--border2);
+  border-radius:14px;
+  padding:6px;
+  margin-bottom:1.25rem;
+  backdrop-filter:blur(10px);
+  transition:border-color 0.2s;
+}
+.home-search-wrap:focus-within { border-color:var(--gold); }
+.home-search-input-row {
+  display:flex; align-items:center; gap:10px; padding:0 0.5rem;
+}
+.home-search-icon { font-size:1rem; opacity:0.5; flex-shrink:0; }
+.home-search-in {
+  flex:1; background:transparent; border:none; outline:none;
+  color:var(--text); font-size:1rem; font-family:'DM Sans',sans-serif;
+  padding:0.65rem 0;
+}
+.home-search-in::placeholder { color:var(--muted2); }
+.home-search-btn {
+  background:var(--gold); color:var(--dark); border:none;
+  border-radius:9px; padding:0.6rem 1.4rem; font-size:0.9rem;
+  font-weight:600; cursor:pointer; font-family:'DM Sans',sans-serif;
+  white-space:nowrap; transition:opacity 0.2s;
+}
+.home-search-btn:hover { opacity:0.88; }
+
+/* 4 Asset Cards */
+.home-asset-cards {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+  margin-bottom:1rem;
+}
+@media(max-width:700px){
+  .home-asset-cards { grid-template-columns:repeat(2,1fr); }
+}
+.home-asset-card {
+  background:rgba(255,255,255,0.03);
+  border:0.5px solid var(--border);
+  border-radius:12px; padding:1rem 0.85rem;
+  cursor:pointer; text-align:left;
+  transition:all 0.22s; position:relative; overflow:hidden;
+  font-family:'DM Sans',sans-serif;
+}
+.home-asset-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:transparent; border-radius:12px 12px 0 0; transition:background 0.2s;
+}
+.home-asset-card:hover {
+  border-color:rgba(201,168,76,0.35);
+  background:rgba(201,168,76,0.04);
+  transform:translateY(-2px);
+}
+.home-asset-card:hover::before,
+.home-asset-card.active::before { background:var(--gold); }
+.home-asset-card.active {
+  border-color:rgba(201,168,76,0.5);
+  background:rgba(201,168,76,0.07);
+}
+.hac-icon { font-size:1.5rem; margin-bottom:0.5rem; line-height:1; }
+.hac-title { font-size:0.88rem; font-weight:600; color:#F3F4F8; margin-bottom:3px; }
+.hac-desc  { font-size:0.72rem; color:var(--muted); line-height:1.45; margin-bottom:5px; }
+.hac-examples { font-size:0.68rem; color:var(--muted2); }
+
+/* Quick picks */
+.home-quick {
+  display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:0.25rem 0.5rem;
+}
+.home-quick-lbl { font-size:0.72rem; color:var(--muted2); flex-shrink:0; }
+.home-qtick {
+  font-size:0.73rem; padding:0.22rem 0.65rem;
+  background:rgba(255,255,255,0.05); border:0.5px solid var(--border);
+  border-radius:20px; color:var(--muted); cursor:pointer; transition:all 0.2s;
+}
+.home-qtick:hover { border-color:var(--gold); color:var(--gold); }
+
 .hero-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
 .btn-primary{padding:0.85rem 2.25rem;border-radius:9px;font-size:0.95rem;font-weight:500;background:var(--gold);color:var(--dark);border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s}
 .btn-primary:hover{opacity:0.9;transform:translateY(-1px)}
@@ -56,7 +136,7 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 
 /* STATS */
 .stats{display:flex;justify-content:center;gap:3rem;padding:2rem;border-top:0.5px solid var(--border);border-bottom:0.5px solid var(--border);flex-wrap:wrap}
-.stat-num{font-family:'Playfair Display',serif;font-size:2rem;color:var(--gold);line-height:1}
+.stat-num{font-family:Playfair Display,serif;font-size:2rem;color:var(--gold);line-height:1}
 .stat-lbl{font-size:0.78rem;color:var(--muted);margin-top:4px}
 
 /* FEATURES */
@@ -105,12 +185,12 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 .main-panel{}
 .empty-box{background:var(--dark2);border:0.5px solid var(--border);border-radius:14px;padding:4rem 2rem;text-align:center}
 .empty-box svg{opacity:0.3;margin:0 auto 1.25rem;display:block}
-.empty-title{font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--muted)}
+.empty-title{font-family:Playfair Display,serif;font-size:1.25rem;color:var(--muted)}
 .empty-sub{font-size:0.85rem;color:var(--muted2);margin-top:0.4rem}
 
 /* CARDS */
 .card{background:var(--dark2);border:0.5px solid var(--border);border-radius:14px;padding:1.5rem;margin-bottom:1rem}
-.price-big{font-family:'Playfair Display',serif;font-size:2.2rem;color:var(--text);font-variant-numeric:tabular-nums;line-height:1}
+.price-big{font-family:Playfair Display,serif;font-size:2.2rem;color:var(--text);font-variant-numeric:tabular-nums;line-height:1}
 .chg-pill{display:inline-flex;align-items:center;font-size:0.88rem;font-weight:500;padding:0.3rem 0.85rem;border-radius:20px;margin-top:6px;font-variant-numeric:tabular-nums}
 .chg-pill.up{background:rgba(29,185,84,0.12);color:var(--green)}
 .chg-pill.dn{background:rgba(231,76,60,0.12);color:var(--red)}
@@ -155,7 +235,7 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 .scen.bull .scen-lbl{color:var(--green)}
 .scen.base .scen-lbl{color:var(--gold)}
 .scen.bear .scen-lbl{color:var(--red)}
-.scen-price{font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:4px}
+.scen-price{font-family:Playfair Display,serif;font-size:1.2rem;margin-bottom:4px}
 .scen.bull .scen-price{color:var(--green)}
 .scen.base .scen-price{color:var(--gold)}
 .scen.bear .scen-price{color:var(--red)}
@@ -195,7 +275,7 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 .t-card{background:var(--dark3);border-radius:10px;padding:1rem 1.1rem;border:0.5px solid var(--border);cursor:pointer;transition:border-color 0.2s}
 .t-card:hover{border-color:rgba(201,168,76,0.4)}
 .t-card-name{font-size:0.82rem;font-weight:500;margin-bottom:4px}
-.t-card-rate{font-family:'Playfair Display',serif;font-size:1.25rem;color:var(--gold);margin-bottom:2px}
+.t-card-rate{font-family:Playfair Display,serif;font-size:1.25rem;color:var(--gold);margin-bottom:2px}
 .t-card-type{font-size:0.7rem;color:var(--muted)}
 .t-card-venc{font-size:0.72rem;color:var(--muted2);margin-top:4px}
 
@@ -205,7 +285,7 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 .plan.featured{border-color:var(--gold)}
 .plan-badge{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--dark);font-size:0.7rem;font-weight:500;padding:0.22rem 0.85rem;border-radius:20px;white-space:nowrap}
 .plan-name{font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.5rem}
-.plan-price{font-family:'Playfair Display',serif;font-size:2.2rem;color:var(--text);line-height:1}
+.plan-price{font-family:Playfair Display,serif;font-size:2.2rem;color:var(--text);line-height:1}
 .plan-period{font-size:0.82rem;color:var(--muted)}
 .plan-desc{font-size:0.82rem;color:var(--muted);margin:0.75rem 0 1.25rem;line-height:1.55}
 .plan-feats{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:1.5rem}
@@ -220,10 +300,10 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 /* ABOUT */
 .masters-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.25rem;margin-top:2rem}
 .master-card{background:var(--dark2);border:0.5px solid var(--border);border-radius:14px;padding:1.4rem;text-align:center}
-.master-init{width:52px;height:52px;border-radius:50%;background:rgba(201,168,76,0.1);border:0.5px solid rgba(201,168,76,0.25);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--gold);margin:0 auto 0.85rem}
+.master-init{width:52px;height:52px;border-radius:50%;background:rgba(201,168,76,0.1);border:0.5px solid rgba(201,168,76,0.25);display:flex;align-items:center;justify-content:center;font-family:Playfair Display,serif;font-size:1.3rem;color:var(--gold);margin:0 auto 0.85rem}
 .steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1.25rem;margin-top:2rem}
 .step-card{background:var(--dark2);border:0.5px solid var(--border);border-radius:14px;padding:1.4rem}
-.step-num{font-family:'Playfair Display',serif;font-size:2rem;color:rgba(201,168,76,0.2);line-height:1;margin-bottom:0.75rem}
+.step-num{font-family:Playfair Display,serif;font-size:2rem;color:rgba(201,168,76,0.2);line-height:1;margin-bottom:0.75rem}
 
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.72);align-items:center;justify-content:center}
@@ -240,7 +320,7 @@ nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-co
 
 /* FOOTER */
 footer{border-top:0.5px solid var(--border);padding:2rem;text-align:center;color:var(--muted2);font-size:0.78rem}
-footer strong{font-family:'Playfair Display',serif;color:var(--gold)}
+footer strong{font-family:Playfair Display,serif;color:var(--gold)}
 
 @media(max-width:640px){
   nav .nav-links{display:none}
@@ -254,7 +334,7 @@ footer strong{font-family:'Playfair Display',serif;color:var(--gold)}
 <!-- MODAL -->
 <div class="modal-overlay" id="modal-keys">
   <div class="modal-box">
-    <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;margin-bottom:0.5rem">Configurar APIs</h3>
+    <h3 style="font-family:Playfair Display,serif;font-size:1.2rem;margin-bottom:0.5rem">Configurar APIs</h3>
     <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1.25rem;line-height:1.6">Configure sua chave da Anthropic para análise fundamentalista com IA. Obtenha sua chave em <strong style="color:var(--gold)">console.anthropic.com</strong> (gratuito com $5 de crédito). A Brapi funciona sem token no plano gratuito.</p>
     <label>Chave Anthropic (para análise com IA)</label>
     <input class="modal-in" type="password" id="in-anthropic" placeholder="sk-ant-..." />
@@ -292,6 +372,8 @@ footer strong{font-family:'Playfair Display',serif;color:var(--gold)}
 
 <!-- PAGE: HOME -->
 <div id="page-home" class="page active">
+
+  <!-- TICKER BAR -->
   <div class="ticker-bar">
     <div class="ticker-inner" id="ticker">
       <div class="t-item"><span class="t-sym">WEGE3</span><span class="t-val" id="tv-WEGE3">R$—</span><span class="t-chg" id="tc-WEGE3">—</span></div>
@@ -311,24 +393,87 @@ footer strong{font-family:'Playfair Display',serif;color:var(--gold)}
     </div>
   </div>
 
+  <!-- HERO -->
   <div class="hero">
     <div class="hero-glow"></div>
     <div class="badge"><div class="badge-dot"></div>IA com mentalidade Buffett · Munger · Dalio</div>
     <h1>Invista com a clareza de<br><em>grandes gestores</em></h1>
-    <p class="hero-sub">Análise fundamentalista de ações da B3, criptomoedas e renda fixa. Entenda cada ativo como um investidor de elite.</p>
-    <div class="hero-btns">
-      <button class="btn-primary" onclick="showPage('analysis')">Analisar uma ação →</button>
-      <button class="btn-ghost" onclick="showPage('about')">Ver metodologia</button>
+    <p class="hero-sub">Escolha o tipo de ativo e comece sua análise agora.</p>
+
+    <!-- ASSET SELECTOR — integrado no hero -->
+    <div class="home-asset-selector">
+
+      <!-- Search bar unificada -->
+      <div class="home-search-wrap">
+        <div class="home-search-input-row">
+          <span class="home-search-icon">🔍</span>
+          <input
+            class="home-search-in"
+            id="home-search-in"
+            type="text"
+            placeholder="Busque um ativo — ex: PETR4, BTC, MXRF11..."
+            autocomplete="off"
+          />
+          <button class="home-search-btn" onclick="homeDoSearch()">Analisar →</button>
+        </div>
+      </div>
+
+      <!-- 4 Asset cards -->
+      <div class="home-asset-cards">
+
+        <button class="home-asset-card active" id="hac-BR" onclick="homeSetMkt('BR')">
+          <div class="hac-icon">🇧🇷</div>
+          <div class="hac-title">Ações B3</div>
+          <div class="hac-desc">Análise fundamentalista com TTM, pares e gráfico de preço</div>
+          <div class="hac-examples">PETR4 · WEGE3 · VALE3 · ITUB4</div>
+        </button>
+
+        <button class="home-asset-card" id="hac-CRYPTO" onclick="homeSetMkt('CRYPTO')">
+          <div class="hac-icon">₿</div>
+          <div class="hac-title">Criptomoedas</div>
+          <div class="hac-desc">Cotação em BRL, histórico e análise de volatilidade</div>
+          <div class="hac-examples">BTC · ETH · SOL · BNB</div>
+        </button>
+
+        <button class="home-asset-card" id="hac-RF" onclick="homeSetMkt('RF')">
+          <div class="hac-icon">📊</div>
+          <div class="hac-title">Renda Fixa</div>
+          <div class="hac-desc">Calculadora CDI, Boletim Focus e comparativo de títulos</div>
+          <div class="hac-examples">CDB · LCI · LCA · Tesouro</div>
+        </button>
+
+        <button class="home-asset-card" id="hac-FII" onclick="homeSetMkt('FII')">
+          <div class="hac-icon">🏢</div>
+          <div class="hac-title">FIIs</div>
+          <div class="hac-desc">P/VP, dividend yield, composição e alertas de Data COM</div>
+          <div class="hac-examples">MXRF11 · HGLG11 · XPML11</div>
+        </button>
+
+      </div>
+
+      <!-- Quick suggestions — mudam por tipo -->
+      <div class="home-quick" id="home-quick">
+        <span class="home-quick-lbl">Sugeridas:</span>
+        <span class="home-qtick" onclick="homeQuick('WEGE3')">WEGE3</span>
+        <span class="home-qtick" onclick="homeQuick('PETR4')">PETR4</span>
+        <span class="home-qtick" onclick="homeQuick('ITUB4')">ITUB4</span>
+        <span class="home-qtick" onclick="homeQuick('VALE3')">VALE3</span>
+        <span class="home-qtick" onclick="homeQuick('BBAS3')">BBAS3</span>
+        <span class="home-qtick" onclick="homeQuick('RENT3')">RENT3</span>
+      </div>
+
     </div>
   </div>
 
+  <!-- STATS -->
   <div class="stats">
-    <div style="text-align:center"><div class="stat-num">B3</div><div class="stat-lbl">Ações + Cripto + RF</div></div>
+    <div style="text-align:center"><div class="stat-num">B3</div><div class="stat-lbl">Ações + Cripto + RF + FIIs</div></div>
     <div style="text-align:center"><div class="stat-num">8</div><div class="stat-lbl">Dimensões de análise</div></div>
-    <div style="text-align:center"><div class="stat-num">3</div><div class="stat-lbl">Cenários por ativo</div></div>
+    <div style="text-align:center"><div class="stat-num">Focus</div><div class="stat-lbl">Boletim BCB em tempo real</div></div>
     <div style="text-align:center"><div class="stat-num">IA</div><div class="stat-lbl">Mentalidade Buffett</div></div>
   </div>
 
+  <!-- HOW IT WORKS -->
   <div class="section">
     <div class="container">
       <div class="eyebrow">Como funciona</div>
@@ -344,12 +489,8 @@ footer strong{font-family:'Playfair Display',serif;color:var(--gold)}
     </div>
   </div>
 
-  <div style="text-align:center;padding:3rem 1.5rem;border-top:0.5px solid var(--border)">
-    <h2 style="font-size:1.75rem;margin-bottom:0.75rem">Pronto para analisar?</h2>
-    <p style="color:var(--muted);font-size:0.9rem;margin-bottom:1.75rem">Busque qualquer ação da B3 e obtenha análise fundamentalista completa.</p>
-    <button class="btn-primary" onclick="showPage('analysis')">Começar agora — é grátis</button>
-  </div>
 </div>
+
 
 <!-- PAGE: ANALYSIS -->
 <div id="page-analysis" class="page">
@@ -926,9 +1067,9 @@ function renderAIResult(tabId, elId, text){
 
 // ── CSS ─────────────────────────────────────────────────────────────
 var RF_CSS = `
-.rf2-wrap { font-family:'DM Sans',sans-serif; }
+.rf2-wrap { font-family:DM Sans,sans-serif; }
 .rf2-hero { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:1.5rem; }
-.rf2-hero-title { font-family:'Playfair Display',serif; font-size:1.25rem; color:#F3F4F8; }
+.rf2-hero-title { font-family:Playfair Display,serif; font-size:1.25rem; color:#F3F4F8; }
 .rf2-hero-sub { font-size:0.78rem; color:var(--muted); margin-top:3px; }
 .rf2-live-badge { display:flex; align-items:center; gap:6px; background:rgba(29,185,84,0.08); border:0.5px solid rgba(29,185,84,0.25); border-radius:20px; padding:0.3rem 0.85rem; font-size:0.72rem; color:#1DB954; }
 .rf2-live-dot { width:6px; height:6px; border-radius:50%; background:#1DB954; animation:pulse 2s infinite; }
@@ -942,7 +1083,7 @@ var RF_CSS = `
 .rf2-rate-card.cdi   { border-color:rgba(59,130,246,0.35); }
 .rf2-rate-card.ipca  { border-color:rgba(139,92,246,0.35); }
 .rf2-rate-lbl { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin-bottom:5px; }
-.rf2-rate-val { font-family:'Playfair Display',serif; font-size:1.6rem; line-height:1; }
+.rf2-rate-val { font-family:Playfair Display,serif; font-size:1.6rem; line-height:1; }
 .rf2-rate-val.gold { color:var(--gold); }
 .rf2-rate-val.blue { color:#3B82F6; }
 .rf2-rate-val.purple { color:#8B5CF6; }
@@ -980,11 +1121,11 @@ var RF_CSS = `
 .calc-field { margin-bottom:0.75rem; }
 .calc-label { font-size:0.72rem; color:var(--muted); margin-bottom:4px; display:block; }
 .calc-input-row { display:flex; align-items:center; gap:8px; }
-.calc-in { background:var(--dark2); border:0.5px solid var(--border2); border-radius:8px; padding:0.55rem 0.85rem; color:var(--text); font-size:0.95rem; outline:none; font-family:'DM Sans',sans-serif; width:110px; font-variant-numeric:tabular-nums; transition:border-color 0.2s; }
+.calc-in { background:var(--dark2); border:0.5px solid var(--border2); border-radius:8px; padding:0.55rem 0.85rem; color:var(--text); font-size:0.95rem; outline:none; font-family:DM Sans,sans-serif; width:110px; font-variant-numeric:tabular-nums; transition:border-color 0.2s; }
 .calc-in:focus { border-color:var(--gold); }
 .calc-in-wide { width:100%; }
 .calc-unit { font-size:0.8rem; color:var(--muted); flex-shrink:0; }
-.calc-select { background:var(--dark2); border:0.5px solid var(--border2); border-radius:8px; padding:0.55rem 0.85rem; color:var(--text); font-size:0.85rem; outline:none; font-family:'DM Sans',sans-serif; cursor:pointer; transition:border-color 0.2s; }
+.calc-select { background:var(--dark2); border:0.5px solid var(--border2); border-radius:8px; padding:0.55rem 0.85rem; color:var(--text); font-size:0.85rem; outline:none; font-family:DM Sans,sans-serif; cursor:pointer; transition:border-color 0.2s; }
 .calc-select:focus { border-color:var(--gold); }
 
 /* Resultado */
@@ -993,7 +1134,7 @@ var RF_CSS = `
 .calc-res-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:1rem; }
 .calc-res-item { background:var(--dark3); border-radius:10px; padding:0.75rem 0.9rem; text-align:center; }
 .calc-res-lbl { font-size:0.68rem; color:var(--muted); margin-bottom:4px; }
-.calc-res-val { font-family:'Playfair Display',serif; font-size:1.3rem; line-height:1; }
+.calc-res-val { font-family:Playfair Display,serif; font-size:1.3rem; line-height:1; }
 .calc-res-sub { font-size:0.68rem; color:var(--muted2); margin-top:3px; }
 
 /* IR table */
@@ -1431,7 +1572,7 @@ function rf2_renderAttrCard(res) {
         // Taxa do título
         + '<div style="background:var(--dark3);border-radius:10px;padding:0.85rem;text-align:center;border:0.5px solid rgba(201,168,76,0.3)">'
         + '<div style="font-size:0.65rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Taxa do Título</div>'
-        + '<div style="font-family:\'Playfair Display\',serif;font-size:1.4rem;color:var(--gold)">'
+        + '<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:var(--gold)">'
         + (res.tipo==='posfixado' ? res.taxa.toFixed(0)+'%<span style="font-size:0.8rem"> CDI</span>'
            : res.taxaAbsoluta.toFixed(2)+'%<span style="font-size:0.8rem"> a.a.</span>')
         + '</div>'
@@ -1452,7 +1593,7 @@ function rf2_renderAttrCard(res) {
         // Custo de oportunidade
         + '<div style="background:var(--dark3);border-radius:10px;padding:0.85rem;text-align:center;border:0.5px solid rgba(59,130,246,0.3)">'
         + '<div style="font-size:0.65rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.05em">Custo de Oportunidade</div>'
-        + '<div style="font-family:\'Playfair Display\',serif;font-size:1.4rem;color:#3B82F6">'
+        + '<div style="font-family:Playfair Display,serif;font-size:1.4rem;color:#3B82F6">'
         + (res.tipo==='posfixado' ? '100%<span style="font-size:0.8rem"> CDI</span>' : res.custoOportunidade.toFixed(2)+'%<span style="font-size:0.8rem"> a.a.</span>')
         + '</div>'
         + '<div style="font-size:0.68rem;color:var(--muted2);margin-top:2px">'
@@ -2048,7 +2189,7 @@ var MACRO_CSS = `
 .focus-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:1rem; }
 .focus-card { background:var(--dark3); border-radius:10px; padding:0.9rem 1rem; border:0.5px solid var(--border); }
 .focus-card-lbl { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin-bottom:6px; }
-.focus-card-cur { font-family:'Playfair Display',serif; font-size:1.5rem; color:var(--gold); line-height:1; }
+.focus-card-cur { font-family:Playfair Display,serif; font-size:1.5rem; color:var(--gold); line-height:1; }
 .focus-card-nxt { font-size:0.82rem; color:var(--muted); margin-top:4px; }
 .focus-card-date { font-size:0.68rem; color:var(--muted2); margin-top:6px; }
 .focus-card.selic { border-color:rgba(201,168,76,0.3); }
@@ -2067,14 +2208,14 @@ var MACRO_CSS = `
 .cdi-calc-title { font-size:0.82rem; font-weight:500; color:#F3F4F8; margin-bottom:1rem; }
 .cdi-calc-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
 .cdi-calc-row label { font-size:0.78rem; color:var(--muted); width:140px; flex-shrink:0; }
-.cdi-in { background:var(--dark3); border:0.5px solid var(--border); border-radius:8px; padding:0.5rem 0.85rem; color:var(--text); font-size:0.9rem; outline:none; font-family:'DM Sans',sans-serif; width:100px; font-variant-numeric:tabular-nums; }
+.cdi-in { background:var(--dark3); border:0.5px solid var(--border); border-radius:8px; padding:0.5rem 0.85rem; color:var(--text); font-size:0.9rem; outline:none; font-family:DM Sans,sans-serif; width:100px; font-variant-numeric:tabular-nums; }
 .cdi-in:focus { border-color:var(--gold); }
 .cdi-unit { font-size:0.8rem; color:var(--muted); }
 .cdi-result-box { background:var(--dark3); border-radius:10px; padding:1rem; border:0.5px solid var(--border); margin-top:0.75rem; }
 .cdi-result-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; }
 .cdi-res-item { text-align:center; padding:0.75rem; background:var(--dark2); border-radius:8px; }
 .cdi-res-lbl { font-size:0.72rem; color:var(--muted); margin-bottom:4px; }
-.cdi-res-val { font-family:'Playfair Display',serif; font-size:1.3rem; color:var(--gold); }
+.cdi-res-val { font-family:Playfair Display,serif; font-size:1.3rem; color:var(--gold); }
 .cdi-res-sub { font-size:0.72rem; color:var(--muted2); margin-top:3px; }
 
 .attractiveness-bar { margin-top:1rem; }
@@ -2558,7 +2699,7 @@ var FII_CSS = `
 /* ─── FII MODULE ─── */
 .fii-wrap { padding:0; }
 .fii-toolbar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:1.25rem; }
-.fii-toolbar-title { font-family:'Playfair Display',serif; font-size:1.2rem; color:#F3F4F8; }
+.fii-toolbar-title { font-family:Playfair Display,serif; font-size:1.2rem; color:#F3F4F8; }
 .fii-toolbar-sub { font-size:0.78rem; color:var(--muted); margin-top:2px; }
 .fii-live-badge { display:flex; align-items:center; gap:6px; background:rgba(29,185,84,0.08); border:0.5px solid rgba(29,185,84,0.25); border-radius:20px; padding:0.3rem 0.85rem; font-size:0.72rem; color:#1DB954; }
 .fii-live-dot { width:6px; height:6px; border-radius:50%; background:#1DB954; animation:pulse 2s infinite; }
@@ -2573,10 +2714,10 @@ var FII_CSS = `
 
 /* Search & controls */
 .fii-controls { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1.25rem; align-items:center; }
-.fii-search-in { background:var(--dark3); border:0.5px solid var(--border); border-radius:8px; padding:0.55rem 0.85rem; color:var(--text); font-size:0.88rem; outline:none; font-family:'DM Sans',sans-serif; width:160px; }
+.fii-search-in { background:var(--dark3); border:0.5px solid var(--border); border-radius:8px; padding:0.55rem 0.85rem; color:var(--text); font-size:0.88rem; outline:none; font-family:DM Sans,sans-serif; width:160px; }
 .fii-search-in:focus { border-color:var(--gold); }
-.fii-add-btn { background:var(--gold); color:var(--dark); border:none; border-radius:8px; padding:0.55rem 1rem; font-size:0.85rem; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif; }
-.fii-filter-btn { background:transparent; color:var(--muted); border:0.5px solid var(--border); border-radius:8px; padding:0.5rem 0.85rem; font-size:0.78rem; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; }
+.fii-add-btn { background:var(--gold); color:var(--dark); border:none; border-radius:8px; padding:0.55rem 1rem; font-size:0.85rem; font-weight:500; cursor:pointer; font-family:DM Sans,sans-serif; }
+.fii-filter-btn { background:transparent; color:var(--muted); border:0.5px solid var(--border); border-radius:8px; padding:0.5rem 0.85rem; font-size:0.78rem; cursor:pointer; font-family:DM Sans,sans-serif; transition:all 0.2s; }
 .fii-filter-btn.active { border-color:var(--gold); color:var(--gold); background:rgba(201,168,76,0.08); }
 
 /* Cards grid */
@@ -2590,7 +2731,7 @@ var FII_CSS = `
 .fii-card.fof::before     { background:linear-gradient(90deg,#7c3aed,#a78bfa); }
 
 .fii-card-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:0.85rem; }
-.fii-ticker { font-family:'Playfair Display',serif; font-size:1.3rem; color:#F3F4F8; line-height:1; }
+.fii-ticker { font-family:Playfair Display,serif; font-size:1.3rem; color:#F3F4F8; line-height:1; }
 .fii-segmento { font-size:0.72rem; color:var(--muted); margin-top:3px; }
 .fii-seg-badge { font-size:0.68rem; font-weight:600; padding:0.2rem 0.65rem; border-radius:12px; letter-spacing:0.04em; text-transform:uppercase; }
 .fii-seg-badge.papel   { background:rgba(59,130,246,0.15); color:#3B82F6; border:0.5px solid rgba(59,130,246,0.3); }
@@ -2599,7 +2740,7 @@ var FII_CSS = `
 .fii-seg-badge.fof     { background:rgba(124,58,237,0.15); color:#a78bfa;  border:0.5px solid rgba(124,58,237,0.3); }
 
 .fii-preco-row { display:flex; align-items:baseline; gap:8px; margin-bottom:4px; }
-.fii-preco { font-family:'Playfair Display',serif; font-size:1.5rem; color:#F3F4F8; line-height:1; font-variant-numeric:tabular-nums; }
+.fii-preco { font-family:Playfair Display,serif; font-size:1.5rem; color:#F3F4F8; line-height:1; font-variant-numeric:tabular-nums; }
 .fii-chg { font-size:0.8rem; font-weight:500; padding:0.2rem 0.6rem; border-radius:12px; }
 .fii-chg.up { background:rgba(29,185,84,0.12); color:#1DB954; }
 .fii-chg.dn { background:rgba(231,76,60,0.12); color:#E74C3C; }
@@ -2616,12 +2757,12 @@ var FII_CSS = `
 .fii-metric-val.yield { color:#1DB954; }
 
 .fii-footer { display:flex; align-items:center; justify-content:space-between; margin-top:0.85rem; padding-top:0.75rem; border-top:0.5px solid var(--border); font-size:0.72rem; color:var(--muted2); }
-.fii-alvo-btn { font-size:0.68rem; color:var(--gold); cursor:pointer; background:none; border:none; font-family:'DM Sans',sans-serif; padding:0; text-decoration:underline; }
+.fii-alvo-btn { font-size:0.68rem; color:var(--gold); cursor:pointer; background:none; border:none; font-family:DM Sans,sans-serif; padding:0; text-decoration:underline; }
 
 /* Alvo input */
 .fii-alvo-row { display:flex; align-items:center; gap:6px; margin-top:6px; }
-.fii-alvo-in { background:var(--dark); border:0.5px solid var(--border); border-radius:6px; padding:0.3rem 0.6rem; color:var(--text); font-size:0.8rem; outline:none; font-family:'DM Sans',sans-serif; width:90px; }
-.fii-alvo-set { background:var(--gold); color:var(--dark); border:none; border-radius:6px; padding:0.3rem 0.65rem; font-size:0.75rem; cursor:pointer; font-family:'DM Sans',sans-serif; }
+.fii-alvo-in { background:var(--dark); border:0.5px solid var(--border); border-radius:6px; padding:0.3rem 0.6rem; color:var(--text); font-size:0.8rem; outline:none; font-family:DM Sans,sans-serif; width:90px; }
+.fii-alvo-set { background:var(--gold); color:var(--dark); border:none; border-radius:6px; padding:0.3rem 0.65rem; font-size:0.75rem; cursor:pointer; font-family:DM Sans,sans-serif; }
 
 /* Modal */
 .fii-modal-overlay { display:none; position:fixed; inset:0; z-index:600; background:rgba(0,0,0,0.8); align-items:flex-start; justify-content:center; padding:2rem 1rem; overflow-y:auto; }
@@ -2631,7 +2772,7 @@ var FII_CSS = `
 .fii-modal-close:hover { color:var(--text); border-color:var(--gold); }
 
 .fii-modal-header { margin-bottom:1.5rem; }
-.fii-modal-ticker { font-family:'Playfair Display',serif; font-size:1.8rem; color:#F3F4F8; }
+.fii-modal-ticker { font-family:Playfair Display,serif; font-size:1.8rem; color:#F3F4F8; }
 .fii-modal-sub { font-size:0.82rem; color:var(--muted); margin-top:4px; }
 .fii-modal-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:10px; margin-bottom:1.5rem; }
 .fii-modal-card { background:var(--dark3); border-radius:10px; padding:0.85rem 1rem; }
@@ -3169,6 +3310,1204 @@ function showFIIPanel() {
     var panel = document.getElementById('main-panel');
     loadFIIPanel(panel);
 }
+
+
+// ═══════════════════════════════════════════════════════════════════
+// MÓDULO AÇÕES — Análise Fundamentalista Profunda (Brapi JSON)
+// Balanço · DRE · DFC · Dividendos · TTM · Semáforo
+// ═══════════════════════════════════════════════════════════════════
+
+var ACAO_CSS = `
+/* ─── AÇÕES MODULE ─── */
+.ac-wrap { }
+
+/* TTM Header */
+.ac-ttm { background:var(--dark2); border:0.5px solid rgba(201,168,76,0.3); border-radius:14px; padding:1.25rem; margin-bottom:1.25rem; }
+.ac-ttm-title { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--gold); margin-bottom:0.85rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+.ac-ttm-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:8px; }
+.ac-ttm-card { background:var(--dark3); border-radius:9px; padding:0.75rem 0.85rem; }
+.ac-ttm-lbl { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:4px; }
+.ac-ttm-val { font-size:0.95rem; font-weight:500; font-variant-numeric:tabular-nums; }
+.ac-ttm-val.green { color:#1DB954; }
+.ac-ttm-val.red   { color:#E74C3C; }
+.ac-ttm-val.gold  { color:var(--gold); }
+.ac-ttm-val.blue  { color:#3B82F6; }
+
+/* Period selector */
+.ac-period-sel { display:flex; background:var(--dark3); border-radius:8px; padding:3px; gap:3px; }
+.ac-period-btn { flex:1; padding:0.35rem 0.75rem; border-radius:6px; border:none; font-size:0.78rem; cursor:pointer; color:var(--muted); background:transparent; font-family:DM Sans,sans-serif; transition:all 0.2s; white-space:nowrap; }
+.ac-period-btn.active { background:var(--gold); color:var(--dark); font-weight:500; }
+
+/* Section */
+.ac-section { margin-bottom:1.5rem; }
+.ac-section-title { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--gold); margin-bottom:0.85rem; padding-bottom:0.5rem; border-bottom:0.5px solid var(--border); display:flex; align-items:center; gap:8px; }
+
+/* Metrics grid */
+.ac-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin-bottom:1rem; }
+.ac-mcard { background:var(--dark3); border-radius:10px; padding:0.85rem 1rem; border:0.5px solid var(--border); }
+.ac-mcard.alert  { border-color:rgba(231,76,60,0.4);  background:rgba(231,76,60,0.04); }
+.ac-mcard.safe   { border-color:rgba(29,185,84,0.35); background:rgba(29,185,84,0.04); }
+.ac-mcard.warn   { border-color:rgba(245,158,11,0.35);}
+.ac-lbl { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin-bottom:5px; }
+.ac-val { font-size:1rem; font-weight:500; font-variant-numeric:tabular-nums; }
+.ac-val.green  { color:#1DB954; }
+.ac-val.red    { color:#E74C3C; }
+.ac-val.gold   { color:var(--gold); }
+.ac-val.blue   { color:#3B82F6; }
+.ac-val.purple { color:#8B5CF6; }
+.ac-sub { font-size:0.7rem; color:var(--muted2); margin-top:3px; }
+
+/* Charts */
+.ac-chart-wrap { position:relative; height:220px; width:100%; margin-bottom:0.5rem; }
+.ac-chart-sm   { position:relative; height:160px; width:100%; margin-bottom:0.5rem; }
+.ac-chart-card { background:var(--dark3); border-radius:12px; padding:1rem; border:0.5px solid var(--border); margin-bottom:1rem; }
+.ac-chart-title { font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.85rem; }
+.ac-charts-2col { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+@media(max-width:640px){ .ac-charts-2col { grid-template-columns:1fr; } }
+
+/* Liquidity history */
+.ac-liq-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.ac-liq-table th { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); text-align:left; padding:0.4rem 0.75rem; border-bottom:0.5px solid var(--border); }
+.ac-liq-table td { padding:0.45rem 0.75rem; border-bottom:0.5px solid rgba(36,46,66,0.4); color:var(--muted); }
+.ac-liq-table td:first-child { color:var(--text); }
+.ac-liq-table tr:last-child td { border-bottom:none; }
+
+/* Semáforo */
+.ac-semaforo { display:inline-flex; align-items:center; gap:5px; padding:0.22rem 0.65rem; border-radius:12px; font-size:0.72rem; font-weight:600; }
+.ac-sem-green  { background:rgba(29,185,84,0.12); color:#1DB954; border:0.5px solid rgba(29,185,84,0.3); }
+.ac-sem-yellow { background:rgba(245,158,11,0.12); color:#F59E0B; border:0.5px solid rgba(245,158,11,0.3); }
+.ac-sem-red    { background:rgba(231,76,60,0.12); color:#E74C3C; border:0.5px solid rgba(231,76,60,0.3); }
+
+/* Dividends */
+.ac-div-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.ac-div-table th { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); text-align:left; padding:0.4rem 0.75rem; border-bottom:0.5px solid var(--border); }
+.ac-div-table td { padding:0.45rem 0.75rem; border-bottom:0.5px solid rgba(36,46,66,0.4); color:var(--muted); vertical-align:middle; }
+.ac-div-table td:first-child { color:var(--text); font-weight:500; }
+.ac-div-table tr:last-child td { border-bottom:none; }
+.ac-div-com-badge { background:rgba(201,168,76,0.12); color:var(--gold); border:0.5px solid rgba(201,168,76,0.3); border-radius:8px; padding:0.15rem 0.55rem; font-size:0.68rem; font-weight:600; white-space:nowrap; }
+
+/* Progress bar */
+.ac-bar-row { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+.ac-bar-lbl  { font-size:0.73rem; color:var(--muted); width:130px; flex-shrink:0; }
+.ac-bar-bg   { flex:1; height:6px; background:var(--dark); border-radius:3px; overflow:hidden; }
+.ac-bar-fill { height:100%; border-radius:3px; transition:width 0.8s ease; }
+.ac-bar-pct  { font-size:0.73rem; color:var(--text); width:45px; text-align:right; flex-shrink:0; font-variant-numeric:tabular-nums; }
+
+/* FCL quality */
+.ac-fcl-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:1rem; }
+.ac-fcl-card { background:var(--dark3); border-radius:10px; padding:0.85rem; text-align:center; border:0.5px solid var(--border); }
+.ac-fcl-lbl { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); margin-bottom:5px; }
+.ac-fcl-val { font-family:Playfair Display,serif; font-size:1.1rem; font-variant-numeric:tabular-nums; }
+
+.ac-source { font-size:0.68rem; color:var(--muted2); margin-top:0.5rem; opacity:0.7; }
+.ac-peers-table { margin-bottom:0.5rem; }
+.ac-period-chg { font-size:0.8rem; margin-top:4px; font-weight:500; }
+`;
+
+// ── State ─────────────────────────────────────────────────────────────
+var ACAO_STATE = {
+    data: null,
+    period: 'annual',   // 'annual' | 'quarterly'
+    charts: {}
+};
+
+// ── Format helpers ────────────────────────────────────────────────────
+function ac_bi(v, digits) {
+    if (v == null || isNaN(v)) return '—';
+    digits = digits != null ? digits : 1;
+    var n = +v;
+    if (Math.abs(n) >= 1e12) return 'R$ ' + (n/1e12).toFixed(digits).replace('.',',') + ' T';
+    if (Math.abs(n) >= 1e9)  return 'R$ ' + (n/1e9).toFixed(digits).replace('.',',') + ' Bi';
+    if (Math.abs(n) >= 1e6)  return 'R$ ' + (n/1e6).toFixed(digits).replace('.',',') + ' Mi';
+    if (Math.abs(n) >= 1e3)  return 'R$ ' + (n/1e3).toFixed(digits).replace('.',',') + ' K';
+    return 'R$ ' + n.toFixed(2).replace('.',',');
+}
+function ac_pct(v, dec) {
+    if (v == null || isNaN(v)) return '—';
+    dec = dec || 1;
+    return (+(v)*100).toFixed(dec).replace('.',',') + '%';
+}
+function ac_pctRaw(v, dec) {    // already in % units
+    if (v == null || isNaN(v)) return '—';
+    dec = dec || 2;
+    return (+v).toFixed(dec).replace('.',',') + '%';
+}
+function ac_x(v, dec) {
+    if (v == null || isNaN(v)) return '—';
+    return (+v).toFixed(dec||2).replace('.',',') + 'x';
+}
+function ac_date(s) {
+    if (!s) return '—';
+    try { return new Date(s).toLocaleDateString('pt-BR'); } catch(e){ return s; }
+}
+function ac_year(s) {
+    if (!s) return '—';
+    try { return new Date(s).getFullYear(); } catch(e){ return s; }
+}
+function ac_sem(v) {
+    if (v == null || isNaN(v)) return '';
+    return v > 0 ? 'ac-sem-green' : 'ac-sem-red';
+}
+function ac_growth(v) {
+    if (v == null || isNaN(v)) return '';
+    return v > 0 ? 'green' : 'red';
+}
+function ac_liq_class(v) {
+    if (v == null || isNaN(v)) return '';
+    if (v >= 2)   return 'safe';
+    if (v >= 1.2) return 'warn';
+    return 'alert';
+}
+function ac_destroyChart(key) {
+    if (ACAO_STATE.charts[key]) { try { ACAO_STATE.charts[key].destroy(); } catch(e){} delete ACAO_STATE.charts[key]; }
+}
+
+// ── Fetch full fundamental data from Brapi ────────────────────────────
+async function ac_fetchData(ticker) {
+    var bt = getBT();
+
+    // Step 1: Basic quote + fundamental (always works on free plan)
+    var urlBase = 'https://brapi.dev/api/quote/' + ticker
+        + '?fundamental=true'
+        + (bt ? '&token=' + bt : '');
+    var rBase = await fetch(urlBase);
+    if (!rBase.ok) throw new Error('Ticker "' + ticker + '" não encontrado na B3');
+    var dBase = await rBase.json();
+    if (!dBase.results || !dBase.results[0]) throw new Error('Sem dados para "' + ticker + '"');
+    var q = dBase.results[0];
+
+    // Step 2: Try to fetch extra modules (may fail on free plan — handled gracefully)
+    var modules = [
+        'balanceSheetHistory',
+        'incomeStatementHistory',
+        'cashflowStatementHistory',
+        'defaultKeyStatistics',
+        'financialData',
+        'summaryDetail',
+        'dividendsData'
+    ];
+    try {
+        var urlMod = 'https://brapi.dev/api/quote/' + ticker
+            + '?modules=' + encodeURIComponent(modules.join(','))
+            + '&fundamental=true'
+            + (bt ? '&token=' + bt : '');
+        var rMod = await fetch(urlMod);
+        if (rMod.ok) {
+            var dMod = await rMod.json();
+            var qMod = dMod.results && dMod.results[0];
+            if (qMod) {
+                // Merge extra data into base quote
+                var keys = Object.keys(qMod);
+                for (var i = 0; i < keys.length; i++) {
+                    if (qMod[keys[i]] != null) q[keys[i]] = qMod[keys[i]];
+                }
+            }
+        }
+    } catch(e) { /* modules not available on free plan — proceed with basic data */ }
+
+    // Step 3: Try dividends endpoint separately
+    try {
+        var urlDiv = 'https://brapi.dev/api/v2/quote/' + ticker + '?dividends=true' + (bt ? '&token=' + bt : '');
+        var rDiv = await fetch(urlDiv);
+        if (rDiv.ok) {
+            var dDiv = await rDiv.json();
+            var qDiv = dDiv.results && dDiv.results[0];
+            if (qDiv && qDiv.dividendsData) q.dividendsData = qDiv.dividendsData;
+        }
+    } catch(e) {}
+
+    return q;
+}
+
+// ── TTM Header ────────────────────────────────────────────────────────
+function ac_renderTTM(q) {
+    var fd  = q.financialData || {};
+    var ks  = q.defaultKeyStatistics || {};
+    var sd  = q.summaryDetail || {};
+
+    var pe  = q.priceEarnings  || sd.trailingPE  || ks.trailingPE;
+    var pb  = q.priceToBook    || ks.priceToBook;
+    var roe = fd.returnOnEquity != null ? fd.returnOnEquity * 100 : null;
+    var roa = fd.returnOnAssets != null ? fd.returnOnAssets * 100 : null;
+    var rev = fd.totalRevenue || q.revenue;
+    var revGrowth = fd.revenueGrowth;
+    var grossM = fd.grossMargins != null ? fd.grossMargins * 100 : null;
+    var operM  = fd.operatingMargins != null ? fd.operatingMargins * 100 : null;
+    var netM   = fd.profitMargins != null ? fd.profitMargins * 100 : null;
+    var debtEq = fd.debtToEquity;
+    var curRatio = fd.currentRatio;
+    var ebitda = fd.ebitda || q.ebitda;
+    var dy = q.dividendYield || sd.dividendYield;
+
+    var rgCls = revGrowth != null ? (revGrowth > 0 ? 'green' : 'red') : '';
+
+    return '<div class="ac-ttm">'
+        + '<div class="ac-ttm-title">'
+        + '<span>📊 TTM — Trailing Twelve Months · Múltiplos Atuais</span>'
+        + '<div class="ac-period-sel">'
+        + '<button class="ac-period-btn ' + (ACAO_STATE.period==='annual'?'active':'') + '" onclick="ac_setPeriod(\'annual\')">Anual</button>'
+        + '<button class="ac-period-btn ' + (ACAO_STATE.period==='quarterly'?'active':'') + '" onclick="ac_setPeriod(\'quarterly\')">Trimestral</button>'
+        + '</div></div>'
+        + '<div class="ac-ttm-grid">'
+        + '<div class="ac-ttm-card"><div class="ac-ttm-lbl">P/L</div><div class="ac-ttm-val gold">' + (pe?ac_x(pe):ac_x(q.priceEarnings)) + '</div></div>'
+        + '<div class="ac-ttm-card"><div class="ac-ttm-lbl">P/VP</div><div class="ac-ttm-val gold">' + ac_x(pb) + '</div></div>'
+        + '<div class="ac-ttm-card"><div class="ac-ttm-lbl">ROE</div><div class="ac-ttm-val ' + (roe?roe>15?'green':roe>8?'gold':'red':'') + '">' + (roe!=null?ac_pctRaw(roe):'—') + '</div></div>'
+        + '<div class="ac-ttm-card"><div class="ac-ttm-lbl">ROA</div><div class="ac-ttm-val ' + (roa?roa>5?'green':roa>2?'gold':'red':'') + '">' + (roa!=null?ac_pctRaw(roa):'—') + '</div></div>'
+        + '<div class="ac-ttm-card"><div class="ac-ttm-lbl">Receita</div><div class="ac-ttm-val">' + ac_bi(rev) + '</div></div>'
+        + '<div class="ac-ttm-card"><div class="ac-ttm-lbl">Cresc. Receita</div><div class="ac-ttm-val ' + rgCls + '">' + (revGrowth!=null?(revGrowth>0?'+':'')+ac_pct(revGrowth):'—') + '</div></div>'
+        + '<div class="ac-ttm-card"><div class="ac-ttm-lbl">Margem Bruta</div><div class="ac-ttm-val ' + (grossM?grossM>40?'green':grossM>20?'gold':'red':'') + '">' + (grossM!=null?ac_pctRaw(grossM):'—') + '</div></div>'
+        + '<div class="ac-ttm-card"><div class="ac-ttm-lbl">Margem Líquida</div><div class="ac-ttm-val ' + (netM?netM>15?'green':netM>5?'gold':'red':'') + '">' + (netM!=null?ac_pctRaw(netM):'—') + '</div></div>'
+        + '<div class="ac-ttm-card"><div class="ac-ttm-lbl">EBITDA</div><div class="ac-ttm-val">' + ac_bi(ebitda) + '</div></div>'
+        + '<div class="ac-ttm-card"><div class="ac-ttm-lbl">Dív/PL</div><div class="ac-ttm-val ' + (debtEq?debtEq>2?'red':debtEq>1?'gold':'green':'') + '">' + ac_x(debtEq) + '</div></div>'
+        + '<div class="ac-ttm-card"><div class="ac-ttm-lbl">Liq. Corrente</div><div class="ac-ttm-val ' + (curRatio?curRatio>=1.5?'green':curRatio>=1?'gold':'red':'') + '">' + ac_x(curRatio) + '</div></div>'
+        + '<div class="ac-ttm-card"><div class="ac-ttm-lbl">Div. Yield</div><div class="ac-ttm-val ' + (dy&&dy>5?'green':'gold') + '">' + (dy?ac_pct(dy):'—') + '</div></div>'
+        + '</div></div>';
+}
+
+// ── Pilar 1: Balanço / Solvência ──────────────────────────────────────
+function ac_renderBalanco(q) {
+    var period = ACAO_STATE.period;
+    var histKey = period === 'quarterly' ? 'balanceSheetHistoryQuarterly' : 'balanceSheetHistory';
+    var hist = (q[histKey] && q[histKey].balanceSheetStatements) || [];
+    if (!hist.length) {
+        // Try alternate key
+        hist = (q.balanceSheetHistory && q.balanceSheetHistory.balanceSheetStatements) || [];
+    }
+    hist = hist.slice(0, 5).reverse(); // oldest first
+
+    if (!hist.length) {
+        return '<div class="ac-section"><div class="ac-section-title">🏦 Balanço Patrimonial</div>'
+            + '<div style="color:var(--muted);font-size:0.82rem;padding:1rem;text-align:center">Dados de balanço não disponíveis para este ativo no plano gratuito Brapi.</div></div>';
+    }
+
+    var labels = hist.map(function(h){ return period==='quarterly' ? ac_date(h.endDate||h.date) : ac_year(h.endDate||h.date); });
+
+    // Liquidez corrente por período
+    var liqData = hist.map(function(h){
+        var ca  = h.totalCurrentAssets  || h.currentAssets  || 0;
+        var cl  = h.totalCurrentLiabilities || h.currentLiabilities || 0;
+        return cl > 0 ? ca / cl : null;
+    });
+
+    // Dívida líquida
+    var divLiq = hist.map(function(h){
+        var dCP = h.shortLongTermDebt  || h.currentPortionOfLongTermDebt || 0;
+        var dLP = h.longTermDebt       || 0;
+        var cx  = h.cash               || h.cashAndCashEquivalents || 0;
+        var inv = h.shortTermInvestments || 0;
+        return (dCP + dLP) - (cx + inv);
+    });
+
+    // Capital structure (stacked)
+    var passivCirc = hist.map(function(h){ return h.totalCurrentLiabilities || 0; });
+    var passivNCirc = hist.map(function(h){
+        var total = h.totalLiabilities || 0;
+        var circ  = h.totalCurrentLiabilities || 0;
+        return Math.max(total - circ, 0);
+    });
+    var pl = hist.map(function(h){ return h.totalStockholderEquity || h.stockholdersEquity || 0; });
+
+    var last = hist[hist.length - 1] || {};
+    var ca = last.totalCurrentAssets || 0;
+    var cl = last.totalCurrentLiabilities || 0;
+    var liqCorr = cl > 0 ? ca/cl : null;
+    var lastDivLiq = divLiq[divLiq.length-1] || 0;
+    var liqCls = liqCorr ? (liqCorr>=1.5?'safe':liqCorr>=1?'warn':'alert') : '';
+
+    var html = '<div class="ac-section">'
+        + '<div class="ac-section-title">🏦 Pilar 1 — Solvência e Liquidez (Balanço Patrimonial)</div>'
+
+        // Key metrics
+        + '<div class="ac-metrics">'
+        + '<div class="ac-mcard ' + liqCls + '">'
+        + '<div class="ac-lbl">Índice de Liquidez Corrente</div>'
+        + '<div class="ac-val ' + (liqCorr?liqCorr>=1.5?'green':liqCorr>=1?'gold':'red':'') + '">' + ac_x(liqCorr) + '</div>'
+        + '<div class="ac-sub">' + (liqCorr?liqCorr>=1.5?'Sólida ✓':liqCorr>=1?'Adequada ⚠':'Atenção ⚠':'—') + '</div>'
+        + '</div>'
+        + '<div class="ac-mcard ' + (lastDivLiq<0?'safe':lastDivLiq>1e9?'alert':'warn') + '">'
+        + '<div class="ac-lbl">Dívida Líquida</div>'
+        + '<div class="ac-val ' + (lastDivLiq<0?'green':lastDivLiq>0?'red':'gold') + '">' + ac_bi(lastDivLiq) + '</div>'
+        + '<div class="ac-sub">' + (lastDivLiq<0?'Posição de Caixa Líquido ✓':lastDivLiq>0?'Endividada':'—') + '</div>'
+        + '</div>'
+        + '<div class="ac-mcard"><div class="ac-lbl">Ativo Total</div><div class="ac-val">' + ac_bi(last.totalAssets) + '</div></div>'
+        + '<div class="ac-mcard"><div class="ac-lbl">Patrimônio Líquido</div><div class="ac-val blue">' + ac_bi(last.totalStockholderEquity||last.stockholdersEquity) + '</div></div>'
+        + '</div>'
+
+        // Liquidity history table
+        + '<div class="ac-chart-card">'
+        + '<div class="ac-chart-title">Histórico de Liquidez Corrente</div>'
+        + '<table class="ac-liq-table"><thead><tr><th>Período</th><th>Ativo Circ.</th><th>Pass. Circ.</th><th>Liq. Corrente</th><th>Situação</th></tr></thead><tbody>'
+        + hist.map(function(h,i){
+            var lcv = liqData[i];
+            var lcCls = lcv?lcv>=1.5?'green':lcv>=1?'gold':'red':'';
+            var lcSit = lcv?lcv>=1.5?'Sólida':lcv>=1?'Adequada':'Atenção':'—';
+            var sitCls = lcv?lcv>=1.5?'ac-sem-green':lcv>=1?'ac-sem-yellow':'ac-sem-red':'';
+            return '<tr><td>' + labels[i] + '</td>'
+                + '<td>' + ac_bi(h.totalCurrentAssets) + '</td>'
+                + '<td>' + ac_bi(h.totalCurrentLiabilities) + '</td>'
+                + '<td style="color:var(--' + (lcCls==='green'?'green':lcCls==='red'?'red':'gold') + ')">' + (lcv?lcv.toFixed(2)+'x':'—') + '</td>'
+                + '<td><span class="ac-semaforo ' + sitCls + '">' + lcSit + '</span></td>'
+                + '</tr>';
+        }).join('')
+        + '</tbody></table>'
+        + '<div class="ac-source">Fonte: Brapi · Balanço ' + (period==='quarterly'?'Trimestral':'Anual') + '</div>'
+        + '</div>'
+
+        // Capital structure chart
+        + '<div class="ac-charts-2col">'
+        + '<div class="ac-chart-card"><div class="ac-chart-title">Estrutura de Capital (%)</div><div class="ac-chart-wrap"><canvas id="ac-chart-cap"></canvas></div></div>'
+        + '<div class="ac-chart-card"><div class="ac-chart-title">Dívida Líquida (R$ Bi)</div><div class="ac-chart-wrap"><canvas id="ac-chart-divliq"></canvas></div></div>'
+        + '</div>'
+        + '</div>';
+
+    // Store data for chart drawing
+    ACAO_STATE._capLabels = labels;
+    ACAO_STATE._passivCirc = passivCirc;
+    ACAO_STATE._passivNCirc = passivNCirc;
+    ACAO_STATE._pl = pl;
+    ACAO_STATE._divLiq = divLiq;
+
+    return html;
+}
+
+// ── Pilar 2: DRE / Margens ────────────────────────────────────────────
+function ac_renderDRE(q) {
+    var period = ACAO_STATE.period;
+    var histKey = period === 'quarterly' ? 'incomeStatementHistoryQuarterly' : 'incomeStatementHistory';
+    var hist = (q[histKey] && q[histKey].incomeStatementHistory) || [];
+    if (!hist.length) hist = (q.incomeStatementHistory && q.incomeStatementHistory.incomeStatementHistory) || [];
+    hist = hist.slice(0, 8).reverse();
+
+    if (!hist.length) {
+        return '<div class="ac-section"><div class="ac-section-title">📈 DRE</div>'
+            + '<div style="color:var(--muted);font-size:0.82rem;padding:1rem;text-align:center">Dados de DRE não disponíveis para este ativo.</div></div>';
+    }
+
+    var labels = hist.map(function(h){ return period==='quarterly' ? ac_date(h.endDate||h.date) : ac_year(h.endDate||h.date); });
+
+    var revenues  = hist.map(function(h){ return h.totalRevenue || 0; });
+    var grossPros = hist.map(function(h){ return h.grossProfit || 0; });
+    var ebit      = hist.map(function(h){ return h.ebit || h.operatingIncome || 0; });
+    var netIncome = hist.map(function(h){ return h.netIncome || h.netIncomeApplicableToCommonShares || 0; });
+    var lpa       = hist.map(function(h){ return h.basicEarningsPerCommonShare || h.earningsPerShare || null; });
+
+    var grossMargins = hist.map(function(h,i){ return revenues[i]?grossPros[i]/revenues[i]*100:null; });
+    var ebitMargins  = hist.map(function(h,i){ return revenues[i]?ebit[i]/revenues[i]*100:null; });
+    var netMargins   = hist.map(function(h,i){ return revenues[i]?netIncome[i]/revenues[i]*100:null; });
+
+    var lastRev = revenues[revenues.length-1] || 0;
+    var prevRev = revenues[revenues.length-2] || 0;
+    var revGrowth = prevRev ? (lastRev-prevRev)/Math.abs(prevRev)*100 : null;
+
+    var lastNet = netIncome[netIncome.length-1] || 0;
+    var lastLPA = lpa[lpa.length-1];
+    var lastGM  = grossMargins[grossMargins.length-1];
+    var lastEM  = ebitMargins[ebitMargins.length-1];
+    var lastNM  = netMargins[netMargins.length-1];
+
+    ACAO_STATE._dreLabels = labels;
+    ACAO_STATE._dreRevenues  = revenues;
+    ACAO_STATE._grossMargins = grossMargins;
+    ACAO_STATE._ebitMargins  = ebitMargins;
+    ACAO_STATE._netMargins   = netMargins;
+
+    var rgCls = revGrowth!=null?(revGrowth>0?'green':'red'):'';
+
+    return '<div class="ac-section">'
+        + '<div class="ac-section-title">📈 Pilar 2 — Eficiência Operacional (DRE)</div>'
+        + '<div class="ac-metrics">'
+        + '<div class="ac-mcard"><div class="ac-lbl">Receita Líquida</div><div class="ac-val">' + ac_bi(lastRev) + '</div>'
+        + (revGrowth!=null?'<div class="ac-sub ' + rgCls + '">' + (revGrowth>0?'▲ +':'▼ ') + revGrowth.toFixed(1).replace('.',',') + '% vs anterior</div>':'')
+        + '</div>'
+        + '<div class="ac-mcard"><div class="ac-lbl">Lucro Líquido</div><div class="ac-val ' + (lastNet>0?'green':'red') + '">' + ac_bi(lastNet) + '</div></div>'
+        + '<div class="ac-mcard"><div class="ac-lbl">Margem Bruta</div><div class="ac-val ' + (lastGM?lastGM>40?'green':lastGM>20?'gold':'red':'') + '">' + (lastGM!=null?lastGM.toFixed(1).replace('.',',')+'%':'—') + '</div></div>'
+        + '<div class="ac-mcard"><div class="ac-lbl">Margem EBIT</div><div class="ac-val ' + (lastEM?lastEM>15?'green':lastEM>5?'gold':'red':'') + '">' + (lastEM!=null?lastEM.toFixed(1).replace('.',',')+'%':'—') + '</div></div>'
+        + '<div class="ac-mcard"><div class="ac-lbl">Margem Líquida</div><div class="ac-val ' + (lastNM?lastNM>15?'green':lastNM>5?'gold':'red':'') + '">' + (lastNM!=null?lastNM.toFixed(1).replace('.',',')+'%':'—') + '</div></div>'
+        + '<div class="ac-mcard"><div class="ac-lbl">LPA (último)</div><div class="ac-val ' + (lastLPA?lastLPA>0?'green':'red':'') + '">' + (lastLPA!=null?'R$ '+lastLPA.toFixed(2).replace('.',','):'—') + '</div></div>'
+        + '</div>'
+
+        + '<div class="ac-charts-2col">'
+        + '<div class="ac-chart-card"><div class="ac-chart-title">Receita vs Lucro Líquido</div><div class="ac-chart-wrap"><canvas id="ac-chart-dre"></canvas></div></div>'
+        + '<div class="ac-chart-card"><div class="ac-chart-title">Evolução de Margens (%)</div><div class="ac-chart-wrap"><canvas id="ac-chart-margens"></canvas></div></div>'
+        + '</div>'
+
+        // LPA evolution bars
+        + '<div class="ac-chart-card"><div class="ac-chart-title">LPA — Lucro por Ação (R$)</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:6px">'
+        + hist.map(function(h,i){
+            var v = lpa[i];
+            if (v==null) return '';
+            var cls = v>0?'#1DB954':'#E74C3C';
+            var maxV = Math.max.apply(null, lpa.filter(function(x){return x!=null;}).map(Math.abs));
+            var w = maxV>0 ? Math.min((Math.abs(v)/maxV)*100,100) : 50;
+            return '<div style="flex:1;min-width:60px;text-align:center">'
+                + '<div style="font-size:0.65rem;color:var(--muted);margin-bottom:4px">' + labels[i] + '</div>'
+                + '<div style="height:60px;display:flex;align-items:flex-end;justify-content:center">'
+                + '<div style="width:28px;background:' + cls + ';border-radius:3px 3px 0 0;opacity:0.85;height:' + w.toFixed(0) + '%"></div>'
+                + '</div>'
+                + '<div style="font-size:0.72rem;font-weight:500;color:' + cls + ';margin-top:3px">R$' + (v!=null?v.toFixed(2).replace('.',','):'—') + '</div>'
+                + '</div>';
+        }).join('')
+        + '</div></div>'
+        + '</div>';
+}
+
+// ── Pilar 3: DFC / Qualidade do Lucro ─────────────────────────────────
+function ac_renderDFC(q) {
+    var period = ACAO_STATE.period;
+    var histKey = period === 'quarterly' ? 'cashflowStatementHistoryQuarterly' : 'cashflowStatementHistory';
+    var hist = (q[histKey] && q[histKey].cashflowStatements) || [];
+    if (!hist.length) hist = (q.cashflowStatementHistory && q.cashflowStatementHistory.cashflowStatements) || [];
+    hist = hist.slice(0, 5).reverse();
+
+    if (!hist.length) {
+        return '<div class="ac-section"><div class="ac-section-title">💧 DFC</div>'
+            + '<div style="color:var(--muted);font-size:0.82rem;padding:1rem;text-align:center">Dados de DFC não disponíveis para este ativo.</div></div>';
+    }
+
+    var labels  = hist.map(function(h){ return period==='quarterly' ? ac_date(h.endDate||h.date) : ac_year(h.endDate||h.date); });
+    var opCF    = hist.map(function(h){ return h.totalCashFromOperatingActivities || h.operatingCashFlow || 0; });
+    var invCF   = hist.map(function(h){ return h.totalCashflowsFromInvestingActivities || h.investmentCashFlow || 0; });
+    var finCF   = hist.map(function(h){ return h.totalCashFromFinancingActivities || 0; });
+    var capex   = hist.map(function(h){ return h.capitalExpenditures || h.purchaseOfProperty || 0; });
+    var fcl     = hist.map(function(h,i){ return opCF[i] + invCF[i]; });    // FCL = OCF + ICF(CAPEX)
+    var netInc  = hist.map(function(h){ return h.netIncome || 0; });
+
+    var lastOpCF  = opCF[opCF.length-1]  || 0;
+    var lastFCL   = fcl[fcl.length-1]    || 0;
+    var lastNet   = netInc[netInc.length-1] || 0;
+    var convRate  = lastNet !== 0 ? lastOpCF / lastNet : null;  // Conversão de caixa
+
+    ACAO_STATE._dfcLabels = labels;
+    ACAO_STATE._opCF  = opCF;
+    ACAO_STATE._invCF = invCF;
+    ACAO_STATE._finCF = finCF;
+    ACAO_STATE._fcl   = fcl;
+
+    return '<div class="ac-section">'
+        + '<div class="ac-section-title">💧 Pilar 3 — Ciclo de Caixa (DFC · Qualidade do Lucro)</div>'
+
+        // FCL summary
+        + '<div class="ac-fcl-row">'
+        + '<div class="ac-fcl-card"><div class="ac-fcl-lbl">Op. Cash Flow</div><div class="ac-fcl-val" style="color:' + (lastOpCF>=0?'#1DB954':'#E74C3C') + '">' + ac_bi(lastOpCF) + '</div><div style="font-size:0.68rem;color:var(--muted);margin-top:3px">Caixa das Operações</div></div>'
+        + '<div class="ac-fcl-card" style="border-color:' + (lastFCL>=0?'rgba(29,185,84,0.35)':'rgba(231,76,60,0.35)') + '"><div class="ac-fcl-lbl">FCL (Free Cash Flow)</div><div class="ac-fcl-val" style="color:' + (lastFCL>=0?'#1DB954':'#E74C3C') + '">' + ac_bi(lastFCL) + '</div><div style="font-size:0.68rem;color:var(--muted);margin-top:3px">OCF + CAPEX</div></div>'
+        + '<div class="ac-fcl-card"><div class="ac-fcl-lbl">Conversão de Caixa</div><div class="ac-fcl-val" style="color:' + (convRate?convRate>=0.8?'#1DB954':convRate>=0.5?'#F59E0B':'#E74C3C':'var(--muted)') + '">' + (convRate!=null?convRate.toFixed(2).replace('.',',')+'x':'—') + '</div><div style="font-size:0.68rem;color:var(--muted);margin-top:3px">OCF / Lucro Líquido</div></div>'
+        + '</div>'
+
+        + (lastFCL >= 0
+            ? '<div style="background:rgba(29,185,84,0.06);border:0.5px solid rgba(29,185,84,0.2);border-radius:8px;padding:0.65rem 0.9rem;font-size:0.8rem;color:var(--muted);margin-bottom:1rem">✓ <strong style="color:#1DB954">FCL Positivo</strong> — A empresa gera caixa real após reinvestir no negócio. Indicador de qualidade de lucro elevada.</div>'
+            : '<div style="background:rgba(231,76,60,0.06);border:0.5px solid rgba(231,76,60,0.2);border-radius:8px;padding:0.65rem 0.9rem;font-size:0.8rem;color:var(--muted);margin-bottom:1rem">⚠ <strong style="color:#E74C3C">FCL Negativo</strong> — Empresa em fase de expansão intensa ou com consumo de caixa acima do gerado operacionalmente.</div>')
+
+        + '<div class="ac-chart-card"><div class="ac-chart-title">Fluxo de Caixa por Atividade (R$ Bi)</div><div class="ac-chart-wrap"><canvas id="ac-chart-dfc"></canvas></div></div>'
+
+        // Capex bars
+        + '<div class="ac-chart-card"><div class="ac-chart-title">CAPEX vs Fluxo Operacional</div>'
+        + '<div style="display:flex;flex-direction:column;gap:8px">'
+        + hist.map(function(h,i){
+            var maxAbs = Math.max(Math.abs(opCF[i]), Math.abs(capex[i]||0), 1);
+            var opW  = Math.min((Math.abs(opCF[i])/maxAbs)*100, 100);
+            var cxW  = Math.min((Math.abs(capex[i]||0)/maxAbs)*100, 100);
+            return '<div><div style="font-size:0.7rem;color:var(--muted);margin-bottom:4px">' + labels[i] + '</div>'
+                + '<div class="ac-bar-row"><div class="ac-bar-lbl">OCF</div><div class="ac-bar-bg"><div class="ac-bar-fill" style="width:' + opW.toFixed(0) + '%;background:#1DB954"></div></div><div class="ac-bar-pct">' + ac_bi(opCF[i]) + '</div></div>'
+                + '<div class="ac-bar-row"><div class="ac-bar-lbl">CAPEX</div><div class="ac-bar-bg"><div class="ac-bar-fill" style="width:' + cxW.toFixed(0) + '%;background:#E74C3C"></div></div><div class="ac-bar-pct">' + ac_bi(capex[i]) + '</div></div>'
+                + '</div>';
+        }).join('')
+        + '</div></div>'
+        + '</div>';
+}
+
+// ── Pilar 4: Dividendos e Eventos ─────────────────────────────────────
+function ac_renderDividendos(q) {
+    var dd = q.dividendsData || {};
+    var dividends = dd.cashDividends || [];
+    var stockDivs = dd.stockDividends || [];
+    var subscriptions = dd.subscriptions || [];
+    var price = q.regularMarketPrice || 1;
+
+    if (!dividends.length && !stockDivs.length) {
+        return '<div class="ac-section"><div class="ac-section-title">💰 Dividendos</div>'
+            + '<div style="color:var(--muted);font-size:0.82rem;padding:1rem;text-align:center">Histórico de dividendos não disponível.</div></div>';
+    }
+
+    // Sort by paymentDate desc
+    var divSort = dividends.slice().sort(function(a,b){ return new Date(b.paymentDate||0)-new Date(a.paymentDate||0); });
+    var hoje = new Date();
+    var em7dias = new Date(hoje.getTime() + 7*86400000);
+
+    // DY médio histórico
+    var totalRate = 0;
+    var count = 0;
+    divSort.slice(0,12).forEach(function(d){
+        if (d.rate && price) { totalRate += d.rate; count++; }
+    });
+    var dyMedio = count > 0 && price ? (totalRate / price * 100) : null;
+
+    // Chart data (last 12 months)
+    var divChart = divSort.slice(0,12).reverse();
+    ACAO_STATE._divLabels = divChart.map(function(d){ return ac_date(d.paymentDate||d.relatedTo); });
+    ACAO_STATE._divRates  = divChart.map(function(d){ return d.rate||0; });
+
+    return '<div class="ac-section">'
+        + '<div class="ac-section-title">💰 Pilar 4 — Proventos e Eventos</div>'
+
+        // Summary
+        + '<div class="ac-metrics">'
+        + '<div class="ac-mcard"><div class="ac-lbl">DY Médio Histórico</div><div class="ac-val green">' + (dyMedio?dyMedio.toFixed(2).replace('.',',')+'%':'—') + '</div><div class="ac-sub">Baseado nos últimos ' + count + ' pagamentos</div></div>'
+        + '<div class="ac-mcard"><div class="ac-lbl">Último Dividend</div><div class="ac-val green">' + (divSort[0]?'R$ '+divSort[0].rate.toFixed(4).replace('.',','):'—') + '</div>' + (divSort[0]?'<div class="ac-sub">' + ac_date(divSort[0].paymentDate) + '</div>':'') + '</div>'
+        + '<div class="ac-mcard"><div class="ac-lbl">Pagamentos/ano</div><div class="ac-val">' + Math.min(count, 12) + '</div></div>'
+        + '<div class="ac-mcard"><div class="ac-lbl">Eventos Corporativos</div><div class="ac-val blue">' + (stockDivs.length+subscriptions.length) + '</div><div class="ac-sub">Split/Bonificações</div></div>'
+        + '</div>'
+
+        // Dividend chart
+        + '<div class="ac-chart-card"><div class="ac-chart-title">Histórico de Dividendos (R$/ação)</div><div class="ac-chart-sm"><canvas id="ac-chart-div"></canvas></div></div>'
+
+        // Calendar table
+        + '<div class="ac-chart-card"><div class="ac-chart-title">Calendário de Pagamentos</div>'
+        + '<table class="ac-div-table"><thead><tr><th>Tipo</th><th>Valor/ação</th><th>Data COM</th><th>Pagamento</th><th>DY</th></tr></thead><tbody>'
+        + divSort.slice(0,10).map(function(d){
+            var com = d.lastDatePrior || d.dateCom || d.dateEx;
+            var isComProx = com && new Date(com) >= hoje && new Date(com) <= em7dias;
+            var dy = d.rate && price ? (d.rate/price*100).toFixed(2).replace('.',',')+'%' : '—';
+            return '<tr>'
+                + '<td>' + (d.type||'Dividendo') + (isComProx?'<br><span class="ac-div-com-badge">⚡ Data COM Próx.</span>':'') + '</td>'
+                + '<td style="color:#1DB954">R$ ' + (d.rate?d.rate.toFixed(4).replace('.',','):'—') + '</td>'
+                + '<td>' + (com?'<span style="color:var(--gold)">' + ac_date(com) + '</span>':ac_date(d.approvedOn)) + '</td>'
+                + '<td>' + ac_date(d.paymentDate) + '</td>'
+                + '<td>' + dy + '</td>'
+                + '</tr>';
+        }).join('')
+        + '</tbody></table>'
+        + (divSort.length > 10 ? '<div style="font-size:0.72rem;color:var(--muted2);text-align:center;margin-top:0.5rem">Exibindo 10 de ' + divSort.length + ' registros</div>' : '')
+        + '</div>'
+
+        // Stock events
+        + (stockDivs.length > 0
+            ? '<div class="ac-chart-card"><div class="ac-chart-title">Eventos Corporativos (Split / Bonificações)</div>'
+              + '<table class="ac-div-table"><thead><tr><th>Tipo</th><th>Fator</th><th>Data</th><th>Observação</th></tr></thead><tbody>'
+              + stockDivs.slice(0,8).map(function(d){
+                  return '<tr><td>' + (d.type||'Split') + '</td><td style="color:var(--gold)">' + (d.rate||d.splitRatio||'—') + '</td><td>' + ac_date(d.paymentDate||d.date) + '</td><td style="font-size:0.75rem;color:var(--muted2)">' + (d.description||'—') + '</td></tr>';
+              }).join('')
+              + '</tbody></table></div>'
+            : '')
+        + '</div>';
+}
+
+// ── Draw all charts ───────────────────────────────────────────────────
+function ac_drawCharts() {
+    var COLORS = { green:'#1DB954', red:'#E74C3C', gold:'#C9A84C', blue:'#3B82F6', purple:'#8B5CF6', gray:'#6b7280' };
+    var GRIDCOLOR = 'rgba(42,51,71,0.4)';
+    var TICKCOLOR = '#7B8DB0';
+    var commonScales = {
+        x:{ ticks:{color:TICKCOLOR,font:{size:10},maxRotation:30}, grid:{display:false}, border:{display:false} },
+        y:{ ticks:{color:TICKCOLOR,font:{size:10}}, grid:{color:GRIDCOLOR,lineWidth:0.5}, border:{display:false} }
+    };
+
+    // Capital structure stacked bar
+    var capCtx = document.getElementById('ac-chart-cap');
+    if (capCtx && ACAO_STATE._capLabels) {
+        ac_destroyChart('cap');
+        var totals = ACAO_STATE._passivCirc.map(function(v,i){ return v + ACAO_STATE._passivNCirc[i] + Math.abs(ACAO_STATE._pl[i]); });
+        ACAO_STATE.charts['cap'] = new Chart(capCtx, {
+            type:'bar',
+            data:{
+                labels: ACAO_STATE._capLabels,
+                datasets:[
+                    { label:'Pass. Circ.', data: ACAO_STATE._passivCirc.map(function(v,i){ return totals[i]>0?v/totals[i]*100:0; }), backgroundColor:'rgba(231,76,60,0.75)', borderRadius:2 },
+                    { label:'Pass. N.Circ.', data: ACAO_STATE._passivNCirc.map(function(v,i){ return totals[i]>0?v/totals[i]*100:0; }), backgroundColor:'rgba(245,158,11,0.75)', borderRadius:2 },
+                    { label:'PL', data: ACAO_STATE._pl.map(function(v,i){ return totals[i]>0?Math.abs(v)/totals[i]*100:0; }), backgroundColor:'rgba(29,185,84,0.75)', borderRadius:2 }
+                ]
+            },
+            options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{labels:{color:TICKCOLOR,font:{size:10}}}, tooltip:{backgroundColor:'#1C2638',bodyColor:'#E8EAF0',callbacks:{label:function(c){ return ' '+c.dataset.label+': '+c.raw.toFixed(1)+'%'; }}} }, scales:{ x:commonScales.x, y:{ stacked:true, max:100, ticks:{color:TICKCOLOR,font:{size:10},callback:function(v){ return v+'%'; }}, grid:{color:GRIDCOLOR}, border:{display:false} } } }
+        });
+    }
+
+    // Dívida líquida
+    var dlCtx = document.getElementById('ac-chart-divliq');
+    if (dlCtx && ACAO_STATE._divLiq) {
+        ac_destroyChart('divliq');
+        ACAO_STATE.charts['divliq'] = new Chart(dlCtx,{
+            type:'bar',
+            data:{ labels:ACAO_STATE._capLabels, datasets:[{ data:ACAO_STATE._divLiq.map(function(v){return v/1e9;}), backgroundColor:ACAO_STATE._divLiq.map(function(v){return v<0?'rgba(29,185,84,0.7)':'rgba(231,76,60,0.7)';}), borderRadius:3 }] },
+            options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{backgroundColor:'#1C2638',bodyColor:'#E8EAF0',callbacks:{label:function(c){return ' R$ '+c.raw.toFixed(2)+' Bi';}}}}, scales:{ x:commonScales.x, y:{ ticks:{color:TICKCOLOR,font:{size:10},callback:function(v){return 'R$'+v.toFixed(1)+'Bi';}}, grid:{color:GRIDCOLOR}, border:{display:false} } } }
+        });
+    }
+
+    // DRE: Receita vs Lucro
+    var dreCtx = document.getElementById('ac-chart-dre');
+    if (dreCtx && ACAO_STATE._dreLabels) {
+        ac_destroyChart('dre');
+        ACAO_STATE.charts['dre'] = new Chart(dreCtx,{
+            type:'bar',
+            data:{ labels:ACAO_STATE._dreLabels, datasets:[
+                { label:'Receita', data:ACAO_STATE._dreRevenues.map(function(v){return v/1e9;}), backgroundColor:'rgba(59,130,246,0.6)', borderRadius:3 },
+                { type:'line', label:'Lucro Liq.', data:ACAO_STATE._dreLabels.map(function(_,i){ var nl=ACAO_STATE._dreRevenues[i]; return nl?0:0; }).map(function(_,i){
+                    var h=ACAO_STATE._dreRevenues[i];
+                    return h?0:0;
+                }) }
+            ] },
+            options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:TICKCOLOR,font:{size:10}}},tooltip:{backgroundColor:'#1C2638',bodyColor:'#E8EAF0',callbacks:{label:function(c){return ' '+c.dataset.label+': R$'+c.raw.toFixed(2)+'Bi';}}}}, scales:{ x:commonScales.x, y:{ ticks:{color:TICKCOLOR,font:{size:10},callback:function(v){return 'R$'+v.toFixed(0)+'Bi';}}, grid:{color:GRIDCOLOR}, border:{display:false} } } }
+        });
+        // Rebuild with correct net income
+        var q2 = ACAO_STATE.data;
+        var period2 = ACAO_STATE.period;
+        var histKey2 = period2==='quarterly'?'incomeStatementHistoryQuarterly':'incomeStatementHistory';
+        var hist2 = (q2[histKey2]&&q2[histKey2].incomeStatementHistory)||(q2.incomeStatementHistory&&q2.incomeStatementHistory.incomeStatementHistory)||[];
+        hist2 = hist2.slice(0,8).reverse();
+        var netI = hist2.map(function(h){return (h.netIncome||0)/1e9;});
+        ACAO_STATE.charts['dre'].data.datasets[1] = { type:'line', label:'Lucro Liq.', data:netI, borderColor:COLORS.green, backgroundColor:'rgba(29,185,84,0.1)', borderWidth:2, pointRadius:4, pointBackgroundColor:COLORS.green, tension:0.3, fill:false };
+        ACAO_STATE.charts['dre'].update();
+    }
+
+    // Margens
+    var mCtx = document.getElementById('ac-chart-margens');
+    if (mCtx && ACAO_STATE._grossMargins) {
+        ac_destroyChart('margens');
+        ACAO_STATE.charts['margens'] = new Chart(mCtx,{
+            type:'line',
+            data:{ labels:ACAO_STATE._dreLabels, datasets:[
+                { label:'Mg. Bruta', data:ACAO_STATE._grossMargins, borderColor:COLORS.blue, backgroundColor:'transparent', borderWidth:1.5, pointRadius:3, tension:0.3 },
+                { label:'Mg. EBIT',  data:ACAO_STATE._ebitMargins,  borderColor:COLORS.gold, backgroundColor:'transparent', borderWidth:1.5, pointRadius:3, tension:0.3 },
+                { label:'Mg. Líq.',  data:ACAO_STATE._netMargins,   borderColor:COLORS.green,backgroundColor:'transparent', borderWidth:1.5, pointRadius:3, tension:0.3 }
+            ] },
+            options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:TICKCOLOR,font:{size:10}}},tooltip:{backgroundColor:'#1C2638',bodyColor:'#E8EAF0',callbacks:{label:function(c){return ' '+c.dataset.label+': '+(c.raw!=null?c.raw.toFixed(1)+'%':'—');}}}}, scales:{ x:commonScales.x, y:{ ticks:{color:TICKCOLOR,font:{size:10},callback:function(v){return v+'%';}}, grid:{color:GRIDCOLOR}, border:{display:false} } } }
+        });
+    }
+
+    // DFC
+    var dfcCtx = document.getElementById('ac-chart-dfc');
+    if (dfcCtx && ACAO_STATE._dfcLabels) {
+        ac_destroyChart('dfc');
+        ACAO_STATE.charts['dfc'] = new Chart(dfcCtx,{
+            type:'bar',
+            data:{ labels:ACAO_STATE._dfcLabels, datasets:[
+                { label:'OCF', data:ACAO_STATE._opCF.map(function(v){return v/1e9;}), backgroundColor:'rgba(29,185,84,0.7)', borderRadius:3 },
+                { label:'ICF', data:ACAO_STATE._invCF.map(function(v){return v/1e9;}), backgroundColor:'rgba(231,76,60,0.65)', borderRadius:3 },
+                { label:'FCL', type:'line', data:ACAO_STATE._fcl.map(function(v){return v/1e9;}), borderColor:COLORS.gold, backgroundColor:'transparent', borderWidth:2, pointRadius:4, pointBackgroundColor:COLORS.gold, tension:0.3 }
+            ] },
+            options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:TICKCOLOR,font:{size:10}}},tooltip:{backgroundColor:'#1C2638',bodyColor:'#E8EAF0',callbacks:{label:function(c){return ' '+c.dataset.label+': R$'+c.raw.toFixed(2)+'Bi';}}}}, scales:{ x:commonScales.x, y:{ ticks:{color:TICKCOLOR,font:{size:10},callback:function(v){return 'R$'+v.toFixed(1)+'Bi';}}, grid:{color:GRIDCOLOR}, border:{display:false} } } }
+        });
+    }
+
+    // Dividends
+    var divCtx = document.getElementById('ac-chart-div');
+    if (divCtx && ACAO_STATE._divLabels && ACAO_STATE._divLabels.length) {
+        ac_destroyChart('div');
+        var avgD = ACAO_STATE._divRates.length ? ACAO_STATE._divRates.reduce(function(a,b){return a+b;},0)/ACAO_STATE._divRates.length : 0;
+        ACAO_STATE.charts['div'] = new Chart(divCtx,{
+            type:'bar',
+            data:{ labels:ACAO_STATE._divLabels, datasets:[
+                { data:ACAO_STATE._divRates, backgroundColor:'rgba(29,185,84,0.7)', borderColor:COLORS.green, borderWidth:1, borderRadius:3 },
+                { type:'line', data:ACAO_STATE._divRates.map(function(){return avgD;}), borderColor:COLORS.gold, borderWidth:1.5, borderDash:[4,4], pointRadius:0, fill:false, label:'Média' }
+            ] },
+            options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{backgroundColor:'#1C2638',bodyColor:'#E8EAF0',callbacks:{label:function(c){return ' R$'+c.raw.toFixed(4);}}}}, scales:{ x:{ ticks:{color:TICKCOLOR,font:{size:9},maxRotation:45}, grid:{display:false}, border:{display:false} }, y:{ ticks:{color:TICKCOLOR,font:{size:10},callback:function(v){return 'R$'+v.toFixed(3);}}, grid:{color:GRIDCOLOR}, border:{display:false} } } }
+        });
+    }
+}
+
+// ── Period toggle ─────────────────────────────────────────────────────
+function ac_setPeriod(p) {
+    ACAO_STATE.period = p;
+    if (ACAO_STATE.data) {
+        ac_renderAll(ACAO_STATE.data);
+        toast('Visualização: ' + (p==='annual'?'Anual':'Trimestral'));
+    }
+}
+
+// ── Full render ───────────────────────────────────────────────────────
+
+// Pares por setor para comparação
+var SETOR_PEERS = {
+    'Petróleo':        ['PETR4','PETR3','PRIO3','RECV3','RRRP3','UGPA3'],
+    'Bancos':          ['ITUB4','BBAS3','BBDC4','SANB11','BPAC11','ABCB4'],
+    'Energia':         ['EGIE3','ENEV3','CPFE3','ENGI11','TAEE11','CPLE6'],
+    'Varejo':          ['MGLU3','RENT3','LREN3','ARZZ3','SBSP3','VIVA3'],
+    'Mineração':       ['VALE3','CMIN3','FESA4','USIM5','GGBR4','CSNA3'],
+    'Tecnologia':      ['TOTVS3','INTB3','LWSA3','CASH3','MÉLI3'],
+    'Saúde':           ['RDRD3','HAPV3','GNDI3','FLRY3','DASA3','QUAL3'],
+    'Agro':            ['SLCE3','SMTO3','TTEN3','CAML3','JSLG3'],
+    'Telecomunicações':['VIVT3','TIMS3','OIBR3'],
+    'Shoppings':       ['BRML3','MULT3','IGTA3','ALPA4'],
+    'Construção':      ['CYRE3','EVEN3','MRVE3','DIRR3','EZTC3','TRIS3'],
+    'Logística':       ['RAIL3','CCRO3','ECOR3','STBP3','TRXF11'],
+    'Alimentos':       ['JBSS3','MRFG3','BEEF3','BRFS3','MDIA3'],
+    'Educação':        ['YDUQ3','COGN3','ANIM3','SEER3'],
+    'default':         ['IBOV','BOVA11']
+};
+
+function setor_getPeers(ticker, sector) {
+    // Try to find peers by ticker first, then by sector name
+    for (var key in SETOR_PEERS) {
+        var list = SETOR_PEERS[key];
+        for (var i=0; i<list.length; i++) {
+            if (list[i] === ticker) {
+                return { setor: key, peers: list.filter(function(t){return t!==ticker;}).slice(0,4) };
+            }
+        }
+    }
+    // Try sector string match
+    if (sector) {
+        var sl = sector.toLowerCase();
+        if (sl.includes('petro')||sl.includes('óleo')) return { setor:'Petróleo', peers: SETOR_PEERS['Petróleo'].filter(function(t){return t!==ticker;}).slice(0,4) };
+        if (sl.includes('banco')||sl.includes('financ')) return { setor:'Bancos', peers: SETOR_PEERS['Bancos'].filter(function(t){return t!==ticker;}).slice(0,4) };
+        if (sl.includes('energ')) return { setor:'Energia', peers: SETOR_PEERS['Energia'].filter(function(t){return t!==ticker;}).slice(0,4) };
+        if (sl.includes('miner')) return { setor:'Mineração', peers: SETOR_PEERS['Mineração'].filter(function(t){return t!==ticker;}).slice(0,4) };
+        if (sl.includes('varejo')||sl.includes('retail')) return { setor:'Varejo', peers: SETOR_PEERS['Varejo'].filter(function(t){return t!==ticker;}).slice(0,4) };
+        if (sl.includes('saúde')||sl.includes('saude')||sl.includes('health')) return { setor:'Saúde', peers: SETOR_PEERS['Saúde'].filter(function(t){return t!==ticker;}).slice(0,4) };
+        if (sl.includes('alim')||sl.includes('food')||sl.includes('bev')) return { setor:'Alimentos', peers: SETOR_PEERS['Alimentos'].filter(function(t){return t!==ticker;}).slice(0,4) };
+        if (sl.includes('constr')) return { setor:'Construção', peers: SETOR_PEERS['Construção'].filter(function(t){return t!==ticker;}).slice(0,4) };
+        if (sl.includes('tele')) return { setor:'Telecomunicações', peers: SETOR_PEERS['Telecomunicações'].filter(function(t){return t!==ticker;}).slice(0,4) };
+        if (sl.includes('agro')||sl.includes('agri')) return { setor:'Agro', peers: SETOR_PEERS['Agro'].filter(function(t){return t!==ticker;}).slice(0,4) };
+    }
+    return { setor: 'Setor', peers: [] };
+}
+
+// ── Gráfico de preço com períodos ────────────────────────────────────
+function ac_renderPriceChart(q) {
+    var price  = q.regularMarketPrice;
+    var chgPct = q.regularMarketChangePercent;
+    var chgAbs = q.regularMarketChange;
+    var isUp   = chgPct >= 0;
+    var cc     = isUp ? 'green' : 'red';
+
+    return '<div class="ac-section">'
+        + '<div class="ac-section-title">📉 Performance de Preço · ' + TICKER + '</div>'
+        + '<div class="ac-chart-card">'
+
+        // Price header
+        + '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem">'
+        + '<div>'
+        + '<div style="font-family:Playfair Display,serif;font-size:2rem;color:#F3F4F8;line-height:1">'
+        + fmtR(price) + '</div>'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-top:5px">'
+        + '<span class="chg-pill ' + cc + '">' + (isUp?'+':'') + fmtP(chgPct) + ' (' + (isUp?'+':'') + fmtR(chgAbs) + ')</span>'
+        + '<span style="font-size:0.72rem;color:var(--muted)">hoje</span>'
+        + '</div>'
+        + '<div style="font-size:0.72rem;color:var(--muted);margin-top:4px">52S: ' + fmtR(q.fiftyTwoWeekLow) + ' – ' + fmtR(q.fiftyTwoWeekHigh) + ' &nbsp;·&nbsp; Vol: ' + fmt(q.regularMarketVolume) + '</div>'
+        + '</div>'
+
+        // Custom date range
+        + '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">'
+        + '<div style="display:flex;gap:4px;align-items:center">'
+        + '<input type="date" id="ac-date-from" style="background:var(--dark3);border:0.5px solid var(--border);border-radius:6px;padding:0.3rem 0.6rem;color:var(--text);font-size:0.75rem;outline:none;font-family:DM Sans,sans-serif" />'
+        + '<span style="color:var(--muted);font-size:0.75rem">até</span>'
+        + '<input type="date" id="ac-date-to" style="background:var(--dark3);border:0.5px solid var(--border);border-radius:6px;padding:0.3rem 0.6rem;color:var(--text);font-size:0.75rem;outline:none;font-family:DM Sans,sans-serif" />'
+        + '<button onclick="ac_drawPriceChartCustom()" style="background:var(--gold);color:var(--dark);border:none;border-radius:6px;padding:0.32rem 0.75rem;font-size:0.75rem;cursor:pointer;font-family:DM Sans,sans-serif">→</button>'
+        + '</div>'
+        + '</div>'
+        + '</div>'
+
+        // Period tabs
+        + '<div style="display:flex;gap:4px;margin-bottom:0.85rem;flex-wrap:wrap">'
+        + '<button class="ptab" id="ac-ptab-1d"  data-p="1d"  onclick="ac_drawPriceChart(this.dataset.p)">Dia</button>'
+        + '<button class="ptab" id="ac-ptab-1mo" data-p="1mo" onclick="ac_drawPriceChart(this.dataset.p)">M&ecirc;s</button>'
+        + '<button class="ptab" id="ac-ptab-6mo" data-p="6mo" onclick="ac_drawPriceChart(this.dataset.p)">6 Meses</button>'
+        + '<button class="ptab" id="ac-ptab-1y"  data-p="1y"  onclick="ac_drawPriceChart(this.dataset.p)">Ano</button>'
+        + '<button class="ptab" id="ac-ptab-5y"  data-p="5y"  onclick="ac_drawPriceChart(this.dataset.p)">5 Anos</button>'
+        + '</div>'
+
+        // Chart canvas
+        + '<div class="ac-chart-wrap"><canvas id="ac-price-chart"></canvas></div>'
+        + '<div class="ac-source" id="ac-chart-src">Carregando...</div>'
+        + '</div></div>';
+}
+
+// ── Fetch + draw price chart ──────────────────────────────────────────
+async function ac_drawPriceChart(period) {
+    // Update active tab
+    ['1d','1mo','6mo','1y','5y'].forEach(function(p){
+        var el = document.getElementById('ac-ptab-'+p);
+        if (el) el.classList.toggle('active', p===period);
+    });
+
+    var srcEl = document.getElementById('ac-chart-src');
+    if (srcEl) srcEl.textContent = 'Carregando...';
+
+    var bt = getBT();
+    // Map period to Brapi params
+    var rangeMap = { '1d':'1d', '1mo':'1mo', '6mo':'6mo', '1y':'1y', '5y':'5y' };
+    var intMap   = { '1d':'5m', '1mo':'1d',  '6mo':'1d',  '1y':'1wk','5y':'1mo' };
+    var range    = rangeMap[period] || '1mo';
+    var interval = intMap[period]   || '1d';
+
+    try {
+        var url = 'https://brapi.dev/api/quote/' + TICKER
+            + '?range=' + range + '&interval=' + interval
+            + (bt ? '&token=' + bt : '');
+        var r = await fetch(url);
+        var d = await r.json();
+        var hist = (d.results && d.results[0] && d.results[0].historicalDataPrice) || [];
+
+        hist = hist.map(function(h){
+            return { date: new Date(h.date*1000), close: h.close ? +h.close : null };
+        }).filter(function(h){ return h.close; });
+
+        ac_paintPriceChart(hist, period);
+        if (srcEl) srcEl.textContent = 'Brapi · B3 · ' + hist.length + ' pontos · Atualizado ' + new Date().toLocaleTimeString('pt-BR');
+    } catch(e) {
+        if (srcEl) srcEl.textContent = 'Erro ao carregar histórico';
+    }
+}
+
+async function ac_drawPriceChartCustom() {
+    var fromEl = document.getElementById('ac-date-from');
+    var toEl   = document.getElementById('ac-date-to');
+    if (!fromEl || !toEl || !fromEl.value || !toEl.value) { toast('Selecione as datas de início e fim'); return; }
+
+    // Clear period tab highlights
+    ['1d','1mo','6mo','1y','5y'].forEach(function(p){
+        var el = document.getElementById('ac-ptab-'+p);
+        if (el) el.classList.remove('active');
+    });
+
+    var srcEl = document.getElementById('ac-chart-src');
+    if (srcEl) srcEl.textContent = 'Carregando período personalizado...';
+
+    var bt = getBT();
+    try {
+        // Use 5y range and filter client-side (Brapi doesn't support custom date range)
+        var url = 'https://brapi.dev/api/quote/' + TICKER
+            + '?range=5y&interval=1d'
+            + (bt ? '&token=' + bt : '');
+        var r = await fetch(url);
+        var d = await r.json();
+        var hist = (d.results && d.results[0] && d.results[0].historicalDataPrice) || [];
+
+        var from = new Date(fromEl.value);
+        var to   = new Date(toEl.value);
+        to.setHours(23,59,59);
+
+        hist = hist.map(function(h){
+            return { date: new Date(h.date*1000), close: h.close ? +h.close : null };
+        }).filter(function(h){ return h.close && h.date >= from && h.date <= to; });
+
+        if (!hist.length) { toast('Sem dados para o período selecionado'); return; }
+        ac_paintPriceChart(hist, 'custom');
+        if (srcEl) srcEl.textContent = fromEl.value + ' até ' + toEl.value + ' · ' + hist.length + ' pontos';
+    } catch(e) {
+        if (srcEl) srcEl.textContent = 'Erro ao carregar período personalizado';
+    }
+}
+
+function ac_paintPriceChart(hist, period) {
+    var ctx = document.getElementById('ac-price-chart');
+    if (!ctx) return;
+    ac_destroyChart('price');
+
+    var vals  = hist.map(function(h){ return h.close; });
+    var isUp  = vals[vals.length-1] >= vals[0];
+    var color = isUp ? '#1DB954' : '#E74C3C';
+
+    // Date label format by period
+    var fmt1d = function(d){ return d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
+    var fmtDay= function(d){ return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}); };
+    var fmtMo = function(d){ return d.toLocaleDateString('pt-BR',{month:'short',year:'2-digit'}); };
+    var fmtFn = period==='1d' ? fmt1d : (period==='5y'||period==='custom') ? fmtMo : fmtDay;
+    var labels = hist.map(function(h){ return fmtFn(h.date); });
+
+    // Min/max for annotation
+    var minV = Math.min.apply(null, vals);
+    var maxV = Math.max.apply(null, vals);
+    var pctChg = vals[0] > 0 ? ((vals[vals.length-1]-vals[0])/vals[0]*100) : 0;
+
+    ACAO_STATE.charts['price'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: vals,
+                borderColor: color,
+                borderWidth: 1.5,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                tension: 0.3,
+                fill: true,
+                backgroundColor: isUp ? 'rgba(29,185,84,0.07)' : 'rgba(231,76,60,0.07)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode:'index', intersect:false },
+            plugins: {
+                legend: { display:false },
+                tooltip: {
+                    backgroundColor:'#1C2638',
+                    borderColor:'#2E3A50',
+                    borderWidth:0.5,
+                    titleColor:'#7B8DB0',
+                    bodyColor:'#E8EAF0',
+                    callbacks: {
+                        label: function(c){ return '  R$ ' + (+c.raw).toFixed(2).replace('.',','); }
+                    }
+                }
+            },
+            scales: {
+                x: { ticks:{color:'#7B8DB0',font:{size:10},maxTicksLimit:8,autoSkip:true}, grid:{color:'rgba(42,51,71,0.4)',lineWidth:0.5}, border:{display:false} },
+                y: { position:'right', ticks:{color:'#7B8DB0',font:{size:10},callback:function(v){ return 'R$'+v.toFixed(2).replace('.',','); }}, grid:{color:'rgba(42,51,71,0.4)',lineWidth:0.5}, border:{display:false} }
+            }
+        }
+    });
+
+    // Update price change indicator on chart
+    var chgEl = document.querySelector('.ac-period-chg');
+    if (chgEl) {
+        chgEl.textContent = (pctChg>=0?'+':'')+pctChg.toFixed(2)+'% no período';
+        chgEl.style.color = isUp ? '#1DB954' : '#E74C3C';
+    }
+}
+
+// ── Pares do setor ────────────────────────────────────────────────────
+function ac_renderPeers(q) {
+    var ticker  = TICKER;
+    var sector  = q.sector || q.industry || '';
+    var peerInfo = setor_getPeers(ticker, sector);
+    var peers   = peerInfo.peers;
+
+    var myPE  = q.priceEarnings;
+    var myPB  = q.priceToBook;
+    var myDY  = q.dividendYield;
+    var myMC  = q.marketCap;
+
+    var html = '<div class="ac-section">'
+        + '<div class="ac-section-title">🏆 Comparativo com Pares — ' + peerInfo.setor + '</div>';
+
+    // Self card
+    html += '<div style="margin-bottom:1rem">';
+    html += '<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">📍 Ativo selecionado</div>'
+        + '<div class="ac-peers-table">'
+        + ac_peerRow(ticker, q.regularMarketPrice, q.regularMarketChangePercent, myPE, myPB, myDY ? myDY*100 : null, myMC, true)
+        + '</div>';
+    html += '</div>';
+
+    if (peers.length === 0) {
+        html += '<div style="color:var(--muted);font-size:0.82rem;padding:0.5rem 0">Pares não identificados para este setor.</div>';
+    } else {
+        html += '<div style="font-size:0.72rem;color:var(--muted);margin-bottom:0.5rem">🔄 Pares do setor</div>'
+            + '<div class="ac-peers-table" id="ac-peers-rows">'
+            + '<div style="color:var(--muted);font-size:0.78rem;padding:0.75rem;text-align:center"><div class="spinner" style="display:inline-block;width:14px;height:14px;margin-right:8px"></div>Carregando pares...</div>'
+            + '</div>';
+
+        // Fetch peers async
+        setTimeout(function(){ ac_fetchPeers(peers, myPE, myPB, myDY, myMC); }, 200);
+    }
+
+    html += '</div>';
+    return html;
+}
+
+function ac_peerRow(ticker, price, chgPct, pe, pb, dy, mc, isMain) {
+    var bg    = isMain ? 'background:rgba(201,168,76,0.06);border-color:rgba(201,168,76,0.3);' : '';
+    var dyPct = dy != null ? (+dy).toFixed(2).replace('.',',')+'%' : '—';
+    var dyRaw = (dy != null && dy > 100) ? dy/100 : dy; // normalize if > 1
+    if (dyRaw != null && dyRaw < 1) dyPct = (dyRaw*100).toFixed(2).replace('.',',')+'%';
+
+    return '<div style="display:grid;grid-template-columns:80px 90px 60px 70px 70px 70px 1fr;gap:6px;align-items:center;padding:0.6rem 0.75rem;border-radius:9px;border:0.5px solid var(--border);margin-bottom:6px;' + bg + '">'
+        + '<div style="font-weight:500;font-size:0.88rem;color:#F3F4F8">' + ticker + '</div>'
+        + '<div style="font-size:0.88rem;font-variant-numeric:tabular-nums">' + fmtR(price) + '</div>'
+        + '<div style="font-size:0.8rem;color:' + (chgPct>=0?'#1DB954':'#E74C3C') + '">' + (chgPct!=null?(chgPct>=0?'+':'')+chgPct.toFixed(2).replace('.',',')+'%':'—') + '</div>'
+        + '<div style="font-size:0.8rem;text-align:center;color:' + (pe?pe<20?'#1DB954':pe<35?'#F59E0B':'#E74C3C':'var(--muted)') + '">' + (pe?pe.toFixed(1).replace('.',',')+'x':'—') + '</div>'
+        + '<div style="font-size:0.8rem;text-align:center;color:' + (pb?pb<1?'#1DB954':pb<2?'#F59E0B':'var(--text)':'var(--muted)') + '">' + (pb?pb.toFixed(2).replace('.',',')+'x':'—') + '</div>'
+        + '<div style="font-size:0.8rem;text-align:center;color:#1DB954">' + dyPct + '</div>'
+        + '<div style="font-size:0.78rem;color:var(--muted);text-align:right">' + fmt(mc,'R$') + '</div>'
+        + '</div>';
+}
+
+async function ac_fetchPeers(peers, myPE, myPB, myDY, myMC) {
+    var bt  = getBT();
+    var el  = document.getElementById('ac-peers-rows');
+    if (!el) return;
+
+    var header = '<div style="display:grid;grid-template-columns:80px 90px 60px 70px 70px 70px 1fr;gap:6px;padding:0 0.75rem 0.4rem;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted)">'
+        + '<div>Ticker</div><div>Preço</div><div>Var.</div><div style="text-align:center">P/L</div><div style="text-align:center">P/VP</div><div style="text-align:center">D.Yield</div><div style="text-align:right">Mkt Cap</div>'
+        + '</div>';
+
+    try {
+        var url = 'https://brapi.dev/api/quote/' + peers.join(',')
+            + '?fundamental=true' + (bt ? '&token=' + bt : '');
+        var r = await fetch(url);
+        var d = await r.json();
+        var results = (d.results || []);
+
+        if (!results.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:0.5rem">Dados dos pares não disponíveis</div>'; return; }
+
+        var rows = results.map(function(q2){
+            return ac_peerRow(q2.symbol||q2.ticker, q2.regularMarketPrice, q2.regularMarketChangePercent, q2.priceEarnings, q2.priceToBook, q2.dividendYield, q2.marketCap, false);
+        }).join('');
+
+        el.innerHTML = header + rows;
+
+        // Add sector averages
+        var validPE = results.filter(function(q2){return q2.priceEarnings&&q2.priceEarnings>0;});
+        var validPB = results.filter(function(q2){return q2.priceToBook&&q2.priceToBook>0;});
+        if (validPE.length || validPB.length) {
+            var avgPE = validPE.length ? validPE.reduce(function(s,q2){return s+(q2.priceEarnings||0);},0)/validPE.length : null;
+            var avgPB = validPB.length ? validPB.reduce(function(s,q2){return s+(q2.priceToBook||0);},0)/validPB.length : null;
+            el.innerHTML += '<div style="margin-top:6px;padding:0.6rem 0.75rem;background:var(--dark3);border-radius:9px;font-size:0.75rem;color:var(--muted);display:grid;grid-template-columns:80px 90px 60px 70px 70px 70px 1fr;gap:6px">'
+                + '<div style="color:var(--gold)">Média Setor</div><div>—</div><div>—</div>'
+                + '<div style="text-align:center;color:var(--gold)">' + (avgPE?avgPE.toFixed(1).replace('.',',')+'x':'—') + '</div>'
+                + '<div style="text-align:center;color:var(--gold)">' + (avgPB?avgPB.toFixed(2).replace('.',',')+'x':'—') + '</div>'
+                + '<div style="text-align:center">—</div><div>—</div>'
+                + '</div>'
+                + '<div style="margin-top:4px;padding:0.5rem 0.75rem;font-size:0.72rem;color:var(--muted2)">'
+                + (myPE && avgPE ? (myPE < avgPE ? '✓ P/L abaixo da média setorial — possível desconto' : '▲ P/L acima da média setorial') + ' &nbsp;·&nbsp; ' : '')
+                + (myPB && avgPB ? (myPB < avgPB ? '✓ P/VP abaixo da média — potencial de valorização' : '▲ P/VP acima da média setorial') : '')
+                + '</div>';
+        }
+    } catch(e) {
+        if (el) el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:0.5rem">Erro ao buscar pares: ' + e.message + '</div>';
+    }
+}
+
+function ac_renderAll(q) {
+    ACAO_STATE.data = q;
+    ACAO_STATE.ticker = TICKER;
+    var panel = document.getElementById('main-panel');
+
+    if (!document.getElementById('ac-style')) {
+        var s = document.createElement('style'); s.id='ac-style'; s.textContent=ACAO_CSS; document.head.appendChild(s);
+    }
+
+    var html = '<div class="ac-wrap">'
+        + ac_renderTTM(q)
+        + ac_renderPriceChart(q)
+        + ac_renderPeers(q)
+        + '<div class="ac-source">Fonte: Brapi.dev · B3 · Dados fundamentalistas.</div>'
+        + '</div>';
+
+    panel.innerHTML = html;
+    setTimeout(function(){ ac_drawPriceChart('1mo'); }, 120);
+}
+
+var _ac_renderAll_stub = null; // replaced above
+// ac_renderAll_OLD removed
+
+// ── Hook into existing doSearch ───────────────────────────────────────
+var _original_fetchStock = fetchStock;
+fetchStock = async function(t) {
+    document.getElementById('search-go').disabled = true;
+    setStatus('loading', 'Buscando dados fundamentalistas...');
+    document.getElementById('main-panel').innerHTML = '<div class="card"><div class="loading-row"><div class="spinner"></div>Carregando análise completa de ' + t + '...</div></div>';
+    try {
+        var q = await ac_fetchData(t);
+        aiData = { q: q, type: 'stock' };
+        addWL(t, q.regularMarketPrice, q.regularMarketChangePercent);
+        setStatus('live', 'Análise carregada · ' + new Date().toLocaleTimeString('pt-BR'));
+        ac_renderAll(q);
+    } catch(e) {
+        setStatus('err', e.message);
+        document.getElementById('main-panel').innerHTML = '<div class="empty-box"><div class="empty-title" style="color:var(--red)">' + e.message + '</div><div class="empty-sub">Verifique o ticker e tente novamente.</div></div>';
+    }
+    document.getElementById('search-go').disabled = false;
+};
+
+
+
+// ── HOME PAGE ASSET SELECTOR ─────────────────────────────────────────
+var HOME_MKT = 'BR';
+var HOME_QUICK_MAP = {
+    BR:     ['WEGE3','PETR4','ITUB4','VALE3','BBAS3','RENT3','PRIO3','RADL3'],
+    CRYPTO: ['BTC','ETH','SOL','BNB','ADA','XRP'],
+    RF:     [],
+    FII:    ['MXRF11','XPML11','HGLG11','KNRI11','BCFF11','VISC11']
+};
+var HOME_PLACEHOLDER_MAP = {
+    BR:     'Busque uma ação — ex: PETR4, WEGE3, VALE3...',
+    CRYPTO: 'Busque uma cripto — ex: BTC, ETH, SOL...',
+    RF:     'Renda Fixa — clique em Analisar para abrir a calculadora',
+    FII:    'Busque um FII — ex: MXRF11, HGLG11...'
+};
+
+function homeSetMkt(m) {
+    HOME_MKT = m;
+    // Update active card
+    ['BR','CRYPTO','RF','FII'].forEach(function(k){
+        var el = document.getElementById('hac-'+k);
+        if (el) el.classList.toggle('active', k===m);
+    });
+    // Update placeholder
+    var inp = document.getElementById('home-search-in');
+    if (inp) inp.placeholder = HOME_PLACEHOLDER_MAP[m] || '';
+    // Update quick picks
+    var qEl = document.getElementById('home-quick');
+    if (!qEl) return;
+    var picks = HOME_QUICK_MAP[m] || [];
+    if (picks.length === 0) {
+        qEl.innerHTML = '';
+        return;
+    }
+    qEl.innerHTML = '<span class="home-quick-lbl">Sugeridas:</span>'
+        + picks.map(function(t){
+            return '<span class="home-qtick" data-t="'+t+'" onclick="homeQuick(this.dataset.t)">'+t+'</span>';
+        }).join('');
+}
+
+function homeQuick(ticker) {
+    var inp = document.getElementById('home-search-in');
+    if (inp) inp.value = ticker;
+    homeDoSearch();
+}
+
+function homeDoSearch() {
+    var inp = document.getElementById('home-search-in');
+    var raw = inp ? inp.value.trim().toUpperCase() : '';
+
+    // RF has no ticker — go straight to RF panel
+    if (HOME_MKT === 'RF') {
+        MKT = 'RF';
+        showPage('analysis');
+        setTimeout(showRFPanel, 80);
+        return;
+    }
+
+    // FII with no ticker — go to FII overview
+    if (HOME_MKT === 'FII' && !raw) {
+        MKT = 'FII';
+        showPage('analysis');
+        setTimeout(showFIIPanel, 80);
+        return;
+    }
+
+    if (!raw) {
+        // No ticker — just navigate to analysis with correct market set
+        MKT = HOME_MKT;
+        showPage('analysis');
+        // Update sidebar buttons
+        setTimeout(function(){
+            setMkt(HOME_MKT);
+        }, 80);
+        return;
+    }
+
+    // Has ticker — go directly to analysis
+    TICKER = raw;
+    MKT    = HOME_MKT;
+    showPage('analysis');
+
+    // Trigger search after page switch
+    setTimeout(function(){
+        // Sync sidebar
+        ['BR','CRYPTO','RF','FII'].forEach(function(k){
+            var el = document.getElementById('mkt-'+k);
+            if (el) el.classList.toggle('active', k===MKT);
+        });
+        var sIn = document.getElementById('search-in');
+        if (sIn) sIn.value = raw;
+
+        if (MKT === 'CRYPTO') {
+            fetchCrypto(raw);
+        } else if (MKT === 'FII') {
+            showFIIPanel();
+        } else {
+            fetchStock(raw);
+        }
+    }, 100);
+}
+
+// Allow Enter key on home search
+document.addEventListener('DOMContentLoaded', function(){
+    var inp = document.getElementById('home-search-in');
+    if (inp) inp.addEventListener('keydown', function(e){ if(e.key==='Enter') homeDoSearch(); });
+});
 
 
 /* KEYBOARD */
